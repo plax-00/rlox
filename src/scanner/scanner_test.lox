@@ -1,0 +1,18 @@
+// Your first Lox program!
+print "Hello, world!";
+divide / me;
+-negateMe;
+lessThan <= orEqual;
+greater > than;
+greaterThan >= orEqual;
+
+123 == "123"; // false.
+!false; // true.
+true and false; // false.
+true or false;  // true.
+
+if (condition) {
+  print "yes";
+} else {
+  print "no";
+}

@@ -77,9 +77,9 @@ pub enum TokenType {
 pub static KEYWORDS: Lazy<HashMap<&str, TokenType>> = Lazy::new(|| {
     HashMap::from([
         ("and", TokenType::And),
-        ("class", TokenType::And),
-        ("else", TokenType::And),
-        ("false", TokenType::And),
+        ("class", TokenType::Class),
+        ("else", TokenType::Else),
+        ("false", TokenType::False),
         ("fun", TokenType::Fun),
         ("for", TokenType::For),
         ("if", TokenType::If),
