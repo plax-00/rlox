@@ -2,7 +2,7 @@ use std::{iter::Peekable, str::Chars};
 
 use crate::{
     error::SyntaxError,
-    token::{Token, TokenType},
+    token::{Token, TokenType, KEYWORDS},
 };
 
 pub struct Scanner {
@@ -114,6 +114,10 @@ impl Scanner {
                             Err(e) => errors.push(e),
                         }
                     }
+                    c if c.is_ascii_alphanumeric() => match self.scan_identifier(&mut line, c) {
+                        Ok(t) => tokens.push(t),
+                        Err(e) => errors.push(e),
+                    },
                     _ => errors.push(SyntaxError {
                         line_num: self.line_num,
                     }),
@@ -171,6 +175,26 @@ impl Scanner {
             _ => todo!(),
         }
     }
+
+    fn scan_identifier(
+        &mut self,
+        iter: &mut Peekable<Chars>,
+        current: char,
+    ) -> Result<Token, SyntaxError> {
+        let mut token = current.to_string();
+        while let Some(n) = iter.peek() {
+            if matches!(n, &'\n' | &'\t' | &' ' | '\r') || !(n.is_ascii_alphanumeric() || &'_' == n)
+            {
+                break;
+            }
+            token.push(iter.next().unwrap());
+        }
+        if let Some(token_type) = KEYWORDS.get(token.as_str()) {
+            Ok(Token::new(token_type.clone(), self.line_num))
+        } else {
+            Ok(Token::new(TokenType::Identifier(token), self.line_num))
+        }
+    }
 }
 
 #[cfg(test)]
@@ -216,7 +240,7 @@ mod tests {
     }
 
     #[test]
-    fn scan_slash_test() {
+    fn scan_comment_test() {
         let source = r#"
             // This is a comment
             5 / 10;
@@ -230,6 +254,71 @@ mod tests {
                 Token::new(TokenType::Slash, 3),
                 Token::new(TokenType::Number(10.0), 3),
                 Token::new(TokenType::Semicolon, 3),
+            ]
+        );
+    }
+
+    #[test]
+    fn scan_identifier_test() {
+        let source = r#"
+            var test_var = "hello, world";
+            print test_var;
+        "#;
+        let scanner = Scanner::new(source.to_string());
+        let tokens = scanner.scan_source().unwrap();
+        assert_eq!(
+            tokens,
+            vec![
+                Token::new(TokenType::Var, 2),
+                Token::new(TokenType::Identifier("test_var".to_string()), 2),
+                Token::new(TokenType::Equal, 2),
+                Token::new(TokenType::String("hello, world".to_string()), 2),
+                Token::new(TokenType::Semicolon, 2),
+                Token::new(TokenType::Print, 3),
+                Token::new(TokenType::Identifier("test_var".to_string()), 3),
+                Token::new(TokenType::Semicolon, 3),
+            ]
+        );
+    }
+
+    #[test]
+    fn scanner_test() {
+        let source = r#"
+            // Your first Lox program!
+            print "Hello, world!";
+            divide / me;
+            -negateMe;
+            lessThan <= orEqual;
+            greater > than;
+            greaterThan >= orEqual;
+        "#;
+        let scanner = Scanner::new(source.to_string());
+        let tokens = scanner.scan_source().unwrap();
+        assert_eq!(
+            tokens,
+            vec![
+                Token::new(TokenType::Print, 3),
+                Token::new(TokenType::String("Hello, world!".to_string()), 3),
+                Token::new(TokenType::Semicolon, 3),
+                Token::new(TokenType::Identifier("divide".to_string()), 4),
+                Token::new(TokenType::Slash, 4),
+                Token::new(TokenType::Identifier("me".to_string()), 4),
+                Token::new(TokenType::Semicolon, 4),
+                Token::new(TokenType::Minus, 5),
+                Token::new(TokenType::Identifier("negateMe".to_string()), 5),
+                Token::new(TokenType::Semicolon, 5),
+                Token::new(TokenType::Identifier("lessThan".to_string()), 6),
+                Token::new(TokenType::LessEqual, 6),
+                Token::new(TokenType::Identifier("orEqual".to_string()), 6),
+                Token::new(TokenType::Semicolon, 6),
+                Token::new(TokenType::Identifier("greater".to_string()), 7),
+                Token::new(TokenType::Greater, 7),
+                Token::new(TokenType::Identifier("than".to_string()), 7),
+                Token::new(TokenType::Semicolon, 7),
+                Token::new(TokenType::Identifier("greaterThan".to_string()), 8),
+                Token::new(TokenType::GreaterEqual, 8),
+                Token::new(TokenType::Identifier("orEqual".to_string()), 8),
+                Token::new(TokenType::Semicolon, 8),
             ]
         );
     }

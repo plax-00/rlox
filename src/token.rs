@@ -1,4 +1,6 @@
-use std::fmt::Display;
+use std::{collections::HashMap, fmt::Display};
+
+use once_cell::sync::Lazy;
 
 #[derive(Debug, PartialEq)]
 pub struct Token {
@@ -21,7 +23,7 @@ impl Display for Token {
     }
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum TokenType {
     // Single-character tokens.
     LeftParen,
@@ -71,3 +73,24 @@ pub enum TokenType {
 
     EOF,
 }
+
+pub static KEYWORDS: Lazy<HashMap<&str, TokenType>> = Lazy::new(|| {
+    HashMap::from([
+        ("and", TokenType::And),
+        ("class", TokenType::And),
+        ("else", TokenType::And),
+        ("false", TokenType::And),
+        ("fun", TokenType::Fun),
+        ("for", TokenType::For),
+        ("if", TokenType::If),
+        ("nil", TokenType::Nil),
+        ("or", TokenType::Or),
+        ("print", TokenType::Print),
+        ("return", TokenType::Return),
+        ("super", TokenType::Super),
+        ("this", TokenType::This),
+        ("true", TokenType::True),
+        ("var", TokenType::Var),
+        ("while", TokenType::While),
+    ])
+});
