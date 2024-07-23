@@ -16,3 +16,17 @@ if (condition) {
 } else {
   print "no";
 }
+
+fun printSum(a, b) {
+  print a + b;
+}
+
+class Breakfast {
+  cook() {
+    print "Eggs a-fryin'!";
+  }
+
+  serve(who) {
+    print "Enjoy your breakfast, " + who + ".";
+  }
+}
