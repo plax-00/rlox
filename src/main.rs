@@ -1,7 +1,9 @@
 #![allow(dead_code)]
 use std::env;
 
+mod ast_print;
 mod error;
+mod expression;
 mod scanner;
 mod token;
 
