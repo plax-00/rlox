@@ -1,42 +1,53 @@
 pub trait ExprVisitor {
     type Return;
     fn visit_literal(&self, literal: &Literal) -> Self::Return;
-    fn visit_unary<E: ExprAccept>(&self, unary: &Unary<E>) -> Self::Return;
-    fn visit_binary<L: ExprAccept, R: ExprAccept>(&self, binary: &Binary<L, R>) -> Self::Return;
-    fn visit_grouping<E: ExprAccept>(&self, grouping: &Grouping<E>) -> Self::Return;
+    fn visit_unary(&self, unary: &Unary) -> Self::Return;
+    fn visit_binary(&self, binary: &Binary) -> Self::Return;
+    fn visit_grouping(&self, grouping: &Grouping) -> Self::Return;
 }
 
-pub trait Expr {}
-
-pub trait ExprAccept: Expr {
-    fn accept<V: ExprVisitor>(&self, visitor: V) -> V::Return;
+pub enum Expression {
+    Literal(Literal),
+    Unary(Unary),
+    Binary(Binary),
+    Grouping(Grouping),
 }
 
-impl ExprAccept for Literal {
-    fn accept<V: ExprVisitor>(&self, visitor: V) -> V::Return {
-        visitor.visit_literal(self)
-    }
-}
-impl<E: ExprAccept> ExprAccept for Unary<E> {
-    fn accept<V: ExprVisitor>(&self, visitor: V) -> V::Return {
-        visitor.visit_unary(self)
-    }
-}
-impl<L: ExprAccept, R: ExprAccept> ExprAccept for Binary<L, R> {
-    fn accept<V: ExprVisitor>(&self, visitor: V) -> V::Return {
-        visitor.visit_binary(self)
-    }
-}
-impl<E: ExprAccept> ExprAccept for Grouping<E> {
-    fn accept<V: ExprVisitor>(&self, visitor: V) -> V::Return {
-        visitor.visit_grouping(self)
+impl Expression {
+    pub fn accept<V: ExprVisitor>(&self, visitor: V) -> V::Return {
+        match self {
+            Expression::Literal(literal) => visitor.visit_literal(literal),
+            Expression::Unary(unary) => visitor.visit_unary(unary),
+            Expression::Binary(binary) => visitor.visit_binary(binary),
+            Expression::Grouping(grouping) => visitor.visit_grouping(grouping),
+        }
     }
 }
 
-impl Expr for Literal {}
-impl<E: ExprAccept> Expr for Unary<E> {}
-impl<L: ExprAccept, R: ExprAccept> Expr for Binary<L, R> {}
-impl<E: ExprAccept> Expr for Grouping<E> {}
+impl From<Literal> for Expression {
+    #[inline]
+    fn from(value: Literal) -> Self {
+        Self::Literal(value)
+    }
+}
+impl From<Unary> for Expression {
+    #[inline]
+    fn from(value: Unary) -> Self {
+        Self::Unary(value)
+    }
+}
+impl From<Binary> for Expression {
+    #[inline]
+    fn from(value: Binary) -> Self {
+        Self::Binary(value)
+    }
+}
+impl From<Grouping> for Expression {
+    #[inline]
+    fn from(value: Grouping) -> Self {
+        Self::Grouping(value)
+    }
+}
 
 pub enum Literal {
     Number(f64),
@@ -46,9 +57,9 @@ pub enum Literal {
     Nil,
 }
 
-pub struct Unary<E: ExprAccept> {
+pub struct Unary {
     pub operator: Operator,
-    pub expr: Box<E>,
+    pub expr: Box<Expression>,
 }
 
 #[derive(PartialEq, Eq, Hash)]
@@ -67,12 +78,12 @@ pub enum Operator {
     LessEqual,
 }
 
-pub struct Binary<L: ExprAccept, R: ExprAccept> {
+pub struct Binary {
     pub operator: Operator,
-    pub left: Box<L>,
-    pub right: Box<R>,
+    pub left: Box<Expression>,
+    pub right: Box<Expression>,
 }
 
-pub struct Grouping<E: ExprAccept> {
-    pub expr: Box<E>,
+pub struct Grouping {
+    pub expr: Box<Expression>,
 }

@@ -2,11 +2,11 @@ use std::sync::LazyLock;
 
 use rustc_hash::FxHashMap;
 
-use crate::expression::{Binary, ExprAccept, ExprVisitor, Grouping, Literal, Operator, Unary};
+use crate::expression::{Binary, ExprVisitor, Expression, Grouping, Literal, Operator, Unary};
 
 struct AstPrinter;
 impl AstPrinter {
-    fn print<E: ExprAccept>(&self, expr: &E) -> String {
+    fn print(&self, expr: &Expression) -> String {
         expr.accept(self)
     }
 }
@@ -24,11 +24,11 @@ impl ExprVisitor for &AstPrinter {
         format!("{}", repr)
     }
 
-    fn visit_unary<E: ExprAccept>(&self, unary: &Unary<E>) -> Self::Return {
+    fn visit_unary(&self, unary: &Unary) -> Self::Return {
         format!("({:?} {})", unary.operator, self.print(unary.expr.as_ref()))
     }
 
-    fn visit_binary<L: ExprAccept, R: ExprAccept>(&self, binary: &Binary<L, R>) -> Self::Return {
+    fn visit_binary(&self, binary: &Binary) -> Self::Return {
         format!(
             "({:?} {} {})",
             binary.operator,
@@ -37,7 +37,7 @@ impl ExprVisitor for &AstPrinter {
         )
     }
 
-    fn visit_grouping<E: ExprAccept>(&self, grouping: &Grouping<E>) -> Self::Return {
+    fn visit_grouping(&self, grouping: &Grouping) -> Self::Return {
         format!("(group {})", self.print(grouping.expr.as_ref()))
     }
 }
@@ -74,13 +74,13 @@ mod tests {
     fn literal_test() {
         let printer = AstPrinter;
         let literal = Literal::String("print test".to_string());
-        assert_eq!(r#""print test""#.to_string(), printer.print(&literal));
+        assert_eq!(r#""print test""#.to_string(), printer.print(&literal.into()));
 
         let literal = Literal::True;
-        assert_eq!("true", printer.print(&literal));
+        assert_eq!("true", printer.print(&literal.into()));
 
         let literal = Literal::Number(64.0);
-        assert_eq!("64", printer.print(&literal));
+        assert_eq!("64", printer.print(&literal.into()));
     }
 
     #[test]
@@ -88,10 +88,10 @@ mod tests {
         let printer = AstPrinter;
         let binary = Binary {
             operator: Operator::Plus,
-            left: Box::new(Literal::Number(2.0)),
-            right: Box::new(Literal::Number(3.0)),
+            left: Box::new(Literal::Number(2.0).into()),
+            right: Box::new(Literal::Number(3.0).into()),
         };
-        assert_eq!("(+ 2 3)", printer.print(&binary));
+        assert_eq!("(+ 2 3)", printer.print(&binary.into()));
     }
 
     #[test]
@@ -101,34 +101,34 @@ mod tests {
             operator: Operator::Mult,
             left: Box::new(Unary {
                 operator: Operator::Minus,
-                expr: Box::new(Literal::Number(123.0)),
-            }),
+                expr: Box::new(Literal::Number(123.0).into()),
+            }.into()),
             right: Box::new(Grouping {
-                expr: Box::new(Literal::Number(45.67)),
-            }),
+                expr: Box::new(Literal::Number(45.67).into()),
+            }.into()),
         };
-        assert_eq!("(* (- 123) (group 45.67))", printer.print(&expr));
+        assert_eq!("(* (- 123) (group 45.67))", printer.print(&expr.into()));
 
         let expr = Binary {
             operator: Operator::Mult,
             left: Box::new(Grouping {
                 expr: Box::new(Binary {
                     operator: Operator::Plus,
-                    left: Box::new(Literal::Number(2.0)),
-                    right: Box::new(Literal::Number(2.0)),
-                }),
-            }),
+                    left: Box::new(Literal::Number(2.0).into()),
+                    right: Box::new(Literal::Number(2.0).into()),
+                }.into()),
+            }.into()),
             right: Box::new(Grouping {
                 expr: Box::new(Binary {
                     operator: Operator::Plus,
-                    left: Box::new(Literal::Number(3.0)),
+                    left: Box::new(Literal::Number(3.0).into()),
                     right: Box::new(Unary {
                         operator: Operator::Minus,
-                        expr: Box::new(Literal::Number(1.0)),
-                    }),
-                })
-            })
+                        expr: Box::new(Literal::Number(1.0).into()),
+                    }.into()),
+                }.into())
+            }.into())
         };
-        assert_eq!("(* (group (+ 2 2)) (group (+ 3 (- 1))))", printer.print(&expr));
+        assert_eq!("(* (group (+ 2 2)) (group (+ 3 (- 1))))", printer.print(&expr.into()));
     }
 }
