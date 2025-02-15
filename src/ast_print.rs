@@ -1,9 +1,20 @@
-use crate::expression::{Binary, Expr, ExprVisitor, Grouping, Literal, Unary};
+use std::sync::LazyLock;
+
+use rustc_hash::FxHashMap;
+
+use crate::expression::{Binary, ExprAccept, ExprVisitor, Grouping, Literal, Operator, Unary};
 
 struct AstPrinter;
-impl ExprVisitor<String> for AstPrinter {
-    fn visit_literal(&self, expr: &Literal) -> String {
-        let repr = match expr {
+impl AstPrinter {
+    fn print<E: ExprAccept>(&self, expr: &E) -> String {
+        expr.accept(self)
+    }
+}
+
+impl ExprVisitor for &AstPrinter {
+    type Return = String;
+    fn visit_literal(&self, literal: &Literal) -> Self::Return {
+        let repr = match literal {
             Literal::Number(n) => &format!("{}", n),
             Literal::String(s) => &format!(r#""{}""#, s),
             Literal::True => "true",
@@ -13,74 +24,111 @@ impl ExprVisitor<String> for AstPrinter {
         format!("{}", repr)
     }
 
-    fn visit_unary<E: Expr<String>>(&self, expr: &Unary<E, String>) -> String {
-        format!("({:?} {})", expr.operator, expr.expr.accept(AstPrinter))
+    fn visit_unary<E: ExprAccept>(&self, unary: &Unary<E>) -> Self::Return {
+        format!("({:?} {})", unary.operator, self.print(unary.expr.as_ref()))
     }
 
-    fn visit_binary<L: Expr<String>, R: Expr<String>>(&self, expr: &Binary<L, R, String>) -> String {
-        let _ = expr;
-        todo!()
+    fn visit_binary<L: ExprAccept, R: ExprAccept>(&self, binary: &Binary<L, R>) -> Self::Return {
+        format!(
+            "({:?} {} {})",
+            binary.operator,
+            self.print(binary.left.as_ref()),
+            self.print(binary.right.as_ref())
+        )
     }
 
-    fn visit_grouping<E: Expr<String>>(&self, expr: &Grouping<E, String>) -> String {
-        let _ = expr;
-        todo!()
+    fn visit_grouping<E: ExprAccept>(&self, grouping: &Grouping<E>) -> Self::Return {
+        format!("(group {})", self.print(grouping.expr.as_ref()))
     }
 }
 
-// pub trait AstPrint: Expr {
-//     fn print(&self) -> String;
-// }
-//
-// impl AstPrint for Literal {
-//     fn print(&self) -> String {
-//         let repr = match self {
-//             Self::Number(n) => &format!("{}", n),
-//             Self::String(s) => &format!(r#""{}""#, s),
-//             Self::True => "true",
-//             Self::False => "false",
-//             Self::Nil => "nil",
-//         };
-//         format!("{}", repr)
-//     }
-// }
-//
-// impl<T: Expr> AstPrint for Unary<T> {
-//     fn print(&self) -> String {
-//         format!("({:?} {})", self.operator, self.expr.print())
-//     }
-// }
+impl std::fmt::Debug for Operator {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let repr = *OPERATORS.get(self).expect("Operator should be in hash map");
+        write!(f, "{}", repr)
+    }
+}
 
-// trait AstPrint: ExprVisitor<String> {
-//     fn print<E: Expr>(expr)
-// }
-
-// pub struct AstPrinter;
-// impl ExprVisitor<Literal, String> for AstPrinter {
-//     fn visit(expr: &Literal) -> String {
-//         let _ = expr;
-//         format!("Hello world")
-//     }
-// }
-
-// impl AstPrinter {
-//     fn print<T: AstPrint>(expression: &T) -> String {
-//         format!("({})", expression.print())
-//     }
-// }
-
+static OPERATORS: LazyLock<FxHashMap<Operator, &str>> = LazyLock::new(|| {
+    FxHashMap::from_iter([
+        (Operator::Minus, "-"),
+        (Operator::Plus, "+"),
+        (Operator::Div, "/"),
+        (Operator::Mult, "*"),
+        (Operator::Not, "!"),
+        (Operator::NotEqual, "!="),
+        (Operator::Equal, "="),
+        (Operator::EqualEqual, "=="),
+        (Operator::Greater, ">"),
+        (Operator::GreaterEqual, ">="),
+        (Operator::Less, "<"),
+        (Operator::LessEqual, "<="),
+    ])
+});
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::expression::*;
 
     #[test]
-    fn print_test() {
-        let literal = Literal::String("Hello world".to_string());
-        assert_eq!(r#"("print test")"#.to_string(), literal.accept(AstPrinter));
+    fn literal_test() {
+        let printer = AstPrinter;
+        let literal = Literal::String("print test".to_string());
+        assert_eq!(r#""print test""#.to_string(), printer.print(&literal));
 
-        // let literal = Literal::True;
-        // assert_eq!(r#"(True)"#, AstPrinter::print(&literal));
+        let literal = Literal::True;
+        assert_eq!("true", printer.print(&literal));
+
+        let literal = Literal::Number(64.0);
+        assert_eq!("64", printer.print(&literal));
+    }
+
+    #[test]
+    fn binary_test() {
+        let printer = AstPrinter;
+        let binary = Binary {
+            operator: Operator::Plus,
+            left: Box::new(Literal::Number(2.0)),
+            right: Box::new(Literal::Number(3.0)),
+        };
+        assert_eq!("(+ 2 3)", printer.print(&binary));
+    }
+
+    #[test]
+    fn expr_test() {
+        let printer = AstPrinter;
+        let expr = Binary {
+            operator: Operator::Mult,
+            left: Box::new(Unary {
+                operator: Operator::Minus,
+                expr: Box::new(Literal::Number(123.0)),
+            }),
+            right: Box::new(Grouping {
+                expr: Box::new(Literal::Number(45.67)),
+            }),
+        };
+        assert_eq!("(* (- 123) (group 45.67))", printer.print(&expr));
+
+        let expr = Binary {
+            operator: Operator::Mult,
+            left: Box::new(Grouping {
+                expr: Box::new(Binary {
+                    operator: Operator::Plus,
+                    left: Box::new(Literal::Number(2.0)),
+                    right: Box::new(Literal::Number(2.0)),
+                }),
+            }),
+            right: Box::new(Grouping {
+                expr: Box::new(Binary {
+                    operator: Operator::Plus,
+                    left: Box::new(Literal::Number(3.0)),
+                    right: Box::new(Unary {
+                        operator: Operator::Minus,
+                        expr: Box::new(Literal::Number(1.0)),
+                    }),
+                })
+            })
+        };
+        assert_eq!("(* (group (+ 2 2)) (group (+ 3 (- 1))))", printer.print(&expr));
     }
 }

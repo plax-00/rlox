@@ -1,40 +1,43 @@
-use std::{marker::PhantomData, sync::LazyLock};
-
-use rustc_hash::FxHashMap;
-
-pub trait ExprVisitor<Ret> {
-    fn visit_literal(&self, expr: &Literal) -> Ret;
-    fn visit_unary<E: Expr<Ret>>(&self, expr: &Unary<E, Ret>) -> Ret;
-    fn visit_binary<L: Expr<Ret>, R: Expr<Ret>>(&self, expr: &Binary<L, R, Ret>) -> Ret;
-    fn visit_grouping<E: Expr<Ret>>(&self, expr: &Grouping<E, Ret>) -> Ret;
+pub trait ExprVisitor {
+    type Return;
+    fn visit_literal(&self, literal: &Literal) -> Self::Return;
+    fn visit_unary<E: ExprAccept>(&self, unary: &Unary<E>) -> Self::Return;
+    fn visit_binary<L: ExprAccept, R: ExprAccept>(&self, binary: &Binary<L, R>) -> Self::Return;
+    fn visit_grouping<E: ExprAccept>(&self, grouping: &Grouping<E>) -> Self::Return;
 }
 
-pub trait Expr<Ret> {
-    fn accept<V: ExprVisitor<Ret>>(&self, visitor: V) -> Ret;
+pub trait Expr {}
+
+pub trait ExprAccept: Expr {
+    fn accept<V: ExprVisitor>(&self, visitor: V) -> V::Return;
 }
 
-impl<Ret> Expr<Ret> for Literal {
-    fn accept<V: ExprVisitor<Ret>>(&self, visitor: V) -> Ret {
+impl ExprAccept for Literal {
+    fn accept<V: ExprVisitor>(&self, visitor: V) -> V::Return {
         visitor.visit_literal(self)
     }
 }
-impl<E: Expr<Ret>, Ret> Expr<Ret> for Unary<E, Ret> {
-    fn accept<V: ExprVisitor<Ret>>(&self, visitor: V) -> Ret {
+impl<E: ExprAccept> ExprAccept for Unary<E> {
+    fn accept<V: ExprVisitor>(&self, visitor: V) -> V::Return {
         visitor.visit_unary(self)
     }
 }
-impl<L: Expr<Ret>, R: Expr<Ret>, Ret> Expr<Ret> for Binary<L, R, Ret> {
-    fn accept<V: ExprVisitor<Ret>>(&self, visitor: V) -> Ret {
+impl<L: ExprAccept, R: ExprAccept> ExprAccept for Binary<L, R> {
+    fn accept<V: ExprVisitor>(&self, visitor: V) -> V::Return {
         visitor.visit_binary(self)
     }
 }
-impl<E: Expr<Ret>, Ret> Expr<Ret> for Grouping<E, Ret> {
-    fn accept<V: ExprVisitor<Ret>>(&self, visitor: V) -> Ret {
+impl<E: ExprAccept> ExprAccept for Grouping<E> {
+    fn accept<V: ExprVisitor>(&self, visitor: V) -> V::Return {
         visitor.visit_grouping(self)
     }
 }
 
-#[derive(Debug)]
+impl Expr for Literal {}
+impl<E: ExprAccept> Expr for Unary<E> {}
+impl<L: ExprAccept, R: ExprAccept> Expr for Binary<L, R> {}
+impl<E: ExprAccept> Expr for Grouping<E> {}
+
 pub enum Literal {
     Number(f64),
     String(String),
@@ -43,34 +46,19 @@ pub enum Literal {
     Nil,
 }
 
-pub struct Unary<E: Expr<Ret>, Ret> {
+pub struct Unary<E: ExprAccept> {
     pub operator: Operator,
     pub expr: Box<E>,
-    _phantom: PhantomData<Ret>
-}
-
-#[derive(Debug)]
-pub enum BinaryOperator {
-    EqEq,
-    NotEq,
-    LessThan,
-    LessThanEq,
-    GreaterThan,
-    GreaterThanEq,
-    Plus,
-    Minus,
-    Mult,
-    Divide,
 }
 
 #[derive(PartialEq, Eq, Hash)]
 pub enum Operator {
     Minus,
     Plus,
-    Slash,
-    Star,
-    Bang,
-    BangEqual,
+    Div,
+    Mult,
+    Not,
+    NotEqual,
     Equal,
     EqualEqual,
     Greater,
@@ -79,38 +67,12 @@ pub enum Operator {
     LessEqual,
 }
 
-impl std::fmt::Debug for Operator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let repr = *OPERATORS.get(self).expect("Operator should be in hash map");
-        write!(f, "{}", repr)
-    }
-}
-
-pub struct Binary<L: Expr<Ret>, R: Expr<Ret>, Ret> {
+pub struct Binary<L: ExprAccept, R: ExprAccept> {
+    pub operator: Operator,
     pub left: Box<L>,
     pub right: Box<R>,
-    pub operator: Operator,
-    _phantom: PhantomData<Ret>
 }
 
-pub struct Grouping<E: Expr<Ret>, Ret> {
+pub struct Grouping<E: ExprAccept> {
     pub expr: Box<E>,
-    _phantom: PhantomData<Ret>
 }
-
-static OPERATORS: LazyLock<FxHashMap<Operator, &str>> = LazyLock::new(|| {
-    FxHashMap::from_iter([
-        (Operator::Minus,        "-"),
-        (Operator::Plus,         "+"),
-        (Operator::Slash,        "/"),
-        (Operator::Star,         "*"),
-        (Operator::Bang,         "!"),
-        (Operator::BangEqual,    "!="),
-        (Operator::Equal,        "="),
-        (Operator::EqualEqual,   "=="),
-        (Operator::Greater,      ">"),
-        (Operator::GreaterEqual, ">="),
-        (Operator::Less,         "<"),
-        (Operator::LessEqual,    "<="),
-    ])
-});
