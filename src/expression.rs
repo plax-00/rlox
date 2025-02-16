@@ -91,6 +91,8 @@ impl<'a> TryFrom<&'a Token> for Operator {
             TokenType::Plus => Ok(Self::Plus),
             TokenType::Slash => Ok(Self::Div),
             TokenType::Star => Ok(Self::Mult),
+            TokenType::Bang => Ok(Self::Not),
+            TokenType::BangEqual => Ok(Self::NotEqual),
             TokenType::Equal => Ok(Self::Equal),
             TokenType::EqualEqual => Ok(Self::EqualEqual),
             TokenType::Greater => Ok(Self::Greater),

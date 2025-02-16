@@ -1,7 +1,7 @@
 use std::iter::Peekable;
 
 use crate::{
-    expression::{Binary, Expression, Grouping, Literal, Unary},
+    expression::{Binary, Expression, Grouping, Literal, Operator, Unary},
     token::{Token, TokenType, Tokens},
 };
 
@@ -17,106 +17,53 @@ impl Parser {
         Self { tokens, current }
     }
 
-    fn expression(&mut self) -> Expression {
-        self.equality()
+    fn parse_expr(&mut self) -> Expression {
+        self.parse_recursive(0)
     }
 
-    fn equality(&mut self) -> Expression {
-        let mut expr = self.comparison();
-
-        while let Some(ref next) = self
+    fn parse_recursive(&mut self, right_bp: u8) -> Expression {
+        let mut expr = self.parse_head();
+        while let Some(op) = self
             .tokens
-            .next_if(|t| matches!(t.token_type, TokenType::BangEqual | TokenType::EqualEqual))
+            .peek()
+            .and_then(|t| Operator::try_from(t).ok())
+            .filter(|o| infix_binding_power(&o) > right_bp)
         {
-            expr = Binary {
-                operator: next.try_into().unwrap(),
-                left: Box::new(expr),
-                right: Box::new(self.comparison()),
-            }
-            .into();
+            self.tokens.next();
+            expr = self.parse_tail(expr, op);
         }
-
         expr
     }
 
-    fn comparison(&mut self) -> Expression {
-        let mut expr = self.term();
-
-        while let Some(ref next) = self.tokens.next_if(|t| {
-            matches!(
-                t.token_type,
-                TokenType::Greater
-                    | TokenType::GreaterEqual
-                    | TokenType::Less
-                    | TokenType::LessEqual
-            )
-        }) {
-            expr = Binary {
-                operator: next.try_into().unwrap(),
-                left: Box::new(expr),
-                right: Box::new(self.term()),
-            }
-            .into();
-        }
-
-        expr
-    }
-
-    fn term(&mut self) -> Expression {
-        let mut expr = self.factor();
-
-        while let Some(ref next) = self
+    #[inline]
+    fn parse_head(&mut self) -> Expression {
+        if let Some(ref t) = self
             .tokens
-            .next_if(|t| matches!(t.token_type, TokenType::Minus | TokenType::Plus))
+            .next_if(|t| matches!(t.token_type, TokenType::Minus | TokenType::Bang))
         {
-            expr = Binary {
-                operator: next.try_into().unwrap(),
-                left: Box::new(expr),
-                right: Box::new(self.factor()),
-            }
-            .into();
+            let operator = t.try_into().unwrap();
+            let expr = Box::new(self.parse_recursive(prefix_binding_power(&operator)));
+            Unary { operator, expr }.into()
+        } else {
+            self.parse_primary()
         }
-
-        expr
     }
 
-    fn factor(&mut self) -> Expression {
-        let mut expr = self.unary();
-
-        while let Some(ref next) = self
-            .tokens
-            .next_if(|t| matches!(t.token_type, TokenType::Slash | TokenType::Star))
-        {
-            expr = Binary {
-                operator: next.try_into().unwrap(),
-                left: Box::new(expr),
-                right: Box::new(self.unary()),
-            }
-            .into();
+    #[inline]
+    fn parse_tail(&mut self, left: Expression, op: Operator) -> Expression {
+        let operator_bp = infix_binding_power(&op);
+        let right = self.parse_recursive(operator_bp);
+        Binary {
+            operator: op,
+            left: Box::new(left),
+            right: Box::new(right),
         }
-
-        expr
+        .into()
     }
 
-    fn unary(&mut self) -> Expression {
-        if let Some(ref next) = self
-            .tokens
-            .next_if(|t| matches!(t.token_type, TokenType::Bang | TokenType::Minus))
-        {
-            return Unary {
-                operator: next.try_into().unwrap(),
-                expr: Box::new(self.unary()),
-            }
-            .into();
-        }
-
-        self.primary()
-    }
-
-    fn primary(&mut self) -> Expression {
-        let Some(t) = self.tokens.next() else {
-            panic!()
-        };
+    #[inline]
+    fn parse_primary(&mut self) -> Expression {
+        let t = self.tokens.next().expect("Expected token(s) to parse.");
         match t.token_type {
             TokenType::True => Literal::True.into(),
             TokenType::False => Literal::False.into(),
@@ -124,7 +71,7 @@ impl Parser {
             TokenType::Number(n) => Literal::Number(n).into(),
             TokenType::String(s) => Literal::String(s).into(),
             TokenType::LeftParen => {
-                let expr = self.expression();
+                let expr = self.parse_expr();
                 let Some(Token {
                     token_type: TokenType::RightParen,
                     ..
@@ -142,6 +89,34 @@ impl Parser {
     }
 }
 
+enum BindingPower {
+    Equality = 1,
+    Comparison,
+    Additive,
+    Multiplicative,
+    Unary,
+}
+
+fn infix_binding_power(op: &BinaryOperator) -> u8 {
+    let bp = match *op {
+        Operator::EqualEqual | Operator::NotEqual => BindingPower::Equality,
+        Operator::Greater | Operator::Less | Operator::GreaterEqual | Operator::LessEqual => {
+            BindingPower::Comparison
+        }
+        Operator::Minus | Operator::Plus => BindingPower::Additive,
+        Operator::Mult | Operator::Div => BindingPower::Multiplicative,
+        _ => todo!(),
+    };
+    bp as u8
+}
+
+fn prefix_binding_power(op: &Operator) -> u8 {
+    let (Operator::Minus | Operator::Not) = *op else {
+        panic!()
+    };
+    BindingPower::Unary as u8
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -151,7 +126,7 @@ mod tests {
 
     fn parse_source(source: &'static str) -> Expression {
         let tokens = Scanner::new(source.to_string()).scan_source().unwrap();
-        Parser::new(tokens).expression()
+        Parser::new(tokens).parse_expr()
     }
 
     #[test]
@@ -173,5 +148,17 @@ mod tests {
             r#"(/ (* "string" (group (* 3 4))) (group (+ 2 (* 1 3))))"#,
             PRINTER.print(&expr)
         );
+
+        let expr = parse_source("1 <= 2 * 3");
+        assert_eq!("(<= 1 (* 2 3))", PRINTER.print(&expr));
+
+        let expr = parse_source("!(-2 < 4)");
+        assert_eq!("(! (group (< (- 2) 4)))", PRINTER.print(&expr));
+
+        let expr = parse_source("!!true != !!false");
+        assert_eq!("(!= (! (! true)) (! (! false)))", PRINTER.print(&expr));
+
+        let expr = parse_source("4 == 2 - -2");
+        assert_eq!("(== 4 (- 2 (- 2)))", PRINTER.print(&expr));
     }
 }

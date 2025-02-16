@@ -1,6 +1,7 @@
 #![allow(dead_code)]
 use std::env;
 
+#[cfg(test)]
 mod ast_print;
 mod error;
 mod expression;
