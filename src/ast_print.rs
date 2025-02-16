@@ -4,9 +4,9 @@ use rustc_hash::FxHashMap;
 
 use crate::expression::{Binary, ExprVisitor, Expression, Grouping, Literal, Operator, Unary};
 
-struct AstPrinter;
+pub struct AstPrinter;
 impl AstPrinter {
-    fn print(&self, expr: &Expression) -> String {
+    pub fn print(&self, expr: &Expression) -> String {
         expr.accept(self)
     }
 }
@@ -74,7 +74,10 @@ mod tests {
     fn literal_test() {
         let printer = AstPrinter;
         let literal = Literal::String("print test".to_string());
-        assert_eq!(r#""print test""#.to_string(), printer.print(&literal.into()));
+        assert_eq!(
+            r#""print test""#.to_string(),
+            printer.print(&literal.into())
+        );
 
         let literal = Literal::True;
         assert_eq!("true", printer.print(&literal.into()));
@@ -99,36 +102,60 @@ mod tests {
         let printer = AstPrinter;
         let expr = Binary {
             operator: Operator::Mult,
-            left: Box::new(Unary {
-                operator: Operator::Minus,
-                expr: Box::new(Literal::Number(123.0).into()),
-            }.into()),
-            right: Box::new(Grouping {
-                expr: Box::new(Literal::Number(45.67).into()),
-            }.into()),
+            left: Box::new(
+                Unary {
+                    operator: Operator::Minus,
+                    expr: Box::new(Literal::Number(123.0).into()),
+                }
+                .into(),
+            ),
+            right: Box::new(
+                Grouping {
+                    expr: Box::new(Literal::Number(45.67).into()),
+                }
+                .into(),
+            ),
         };
         assert_eq!("(* (- 123) (group 45.67))", printer.print(&expr.into()));
 
         let expr = Binary {
             operator: Operator::Mult,
-            left: Box::new(Grouping {
-                expr: Box::new(Binary {
-                    operator: Operator::Plus,
-                    left: Box::new(Literal::Number(2.0).into()),
-                    right: Box::new(Literal::Number(2.0).into()),
-                }.into()),
-            }.into()),
-            right: Box::new(Grouping {
-                expr: Box::new(Binary {
-                    operator: Operator::Plus,
-                    left: Box::new(Literal::Number(3.0).into()),
-                    right: Box::new(Unary {
-                        operator: Operator::Minus,
-                        expr: Box::new(Literal::Number(1.0).into()),
-                    }.into()),
-                }.into())
-            }.into())
+            left: Box::new(
+                Grouping {
+                    expr: Box::new(
+                        Binary {
+                            operator: Operator::Plus,
+                            left: Box::new(Literal::Number(2.0).into()),
+                            right: Box::new(Literal::Number(2.0).into()),
+                        }
+                        .into(),
+                    ),
+                }
+                .into(),
+            ),
+            right: Box::new(
+                Grouping {
+                    expr: Box::new(
+                        Binary {
+                            operator: Operator::Plus,
+                            left: Box::new(Literal::Number(3.0).into()),
+                            right: Box::new(
+                                Unary {
+                                    operator: Operator::Minus,
+                                    expr: Box::new(Literal::Number(1.0).into()),
+                                }
+                                .into(),
+                            ),
+                        }
+                        .into(),
+                    ),
+                }
+                .into(),
+            ),
         };
-        assert_eq!("(* (group (+ 2 2)) (group (+ 3 (- 1))))", printer.print(&expr.into()));
+        assert_eq!(
+            "(* (group (+ 2 2)) (group (+ 3 (- 1))))",
+            printer.print(&expr.into())
+        );
     }
 }

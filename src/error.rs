@@ -1,5 +1,7 @@
 use std::{error::Error, fmt::Display};
 
+use crate::token::Token;
+
 #[derive(Debug, PartialEq)]
 pub struct SyntaxError {
     pub line_num: u32,
@@ -20,5 +22,22 @@ impl Error for SyntaxError {
     }
     fn description(&self) -> &str {
         "Source code contains a syntax error."
+    }
+}
+
+#[derive(Debug)]
+pub struct OperatorParseError<'a> {
+    pub token: &'a Token,
+}
+
+impl<'a> Display for OperatorParseError<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "error parsing operator from token: {:?}", self.token)
+    }
+}
+
+impl<'a> Error for OperatorParseError<'a> {
+    fn description(&self) -> &str {
+        "Token is an invalid operator."
     }
 }

@@ -4,6 +4,7 @@ use std::env;
 mod ast_print;
 mod error;
 mod expression;
+mod parser;
 mod scanner;
 mod token;
 

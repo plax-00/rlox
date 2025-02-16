@@ -4,8 +4,8 @@ use rustc_hash::FxHashMap;
 
 #[derive(Debug, PartialEq)]
 pub struct Token {
-    token_type: TokenType,
-    line_num: u32,
+    pub token_type: TokenType,
+    pub line_num: u32,
 }
 
 impl Token {
@@ -24,6 +24,24 @@ impl Token {
 impl Display for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{:#?}", self.token_type)
+    }
+}
+
+pub struct Tokens {
+    tokens: Vec<Token>,
+}
+
+impl From<Vec<Token>> for Tokens {
+    fn from(mut tokens: Vec<Token>) -> Self {
+        tokens.reverse();
+        Self { tokens }
+    }
+}
+
+impl Iterator for Tokens {
+    type Item = Token;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.tokens.pop()
     }
 }
 

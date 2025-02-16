@@ -1,3 +1,8 @@
+use crate::{
+    error::OperatorParseError,
+    token::{Token, TokenType},
+};
+
 pub trait ExprVisitor {
     type Return;
     fn visit_literal(&self, literal: &Literal) -> Self::Return;
@@ -76,6 +81,25 @@ pub enum Operator {
     GreaterEqual,
     Less,
     LessEqual,
+}
+
+impl<'a> TryFrom<&'a Token> for Operator {
+    type Error = OperatorParseError<'a>;
+    fn try_from(value: &'a Token) -> Result<Self, Self::Error> {
+        match value.token_type {
+            TokenType::Minus => Ok(Self::Minus),
+            TokenType::Plus => Ok(Self::Plus),
+            TokenType::Slash => Ok(Self::Div),
+            TokenType::Star => Ok(Self::Mult),
+            TokenType::Equal => Ok(Self::Equal),
+            TokenType::EqualEqual => Ok(Self::EqualEqual),
+            TokenType::Greater => Ok(Self::Greater),
+            TokenType::GreaterEqual => Ok(Self::GreaterEqual),
+            TokenType::Less => Ok(Self::Less),
+            TokenType::LessEqual => Ok(Self::LessEqual),
+            _ => Err(OperatorParseError { token: value }),
+        }
+    }
 }
 
 pub struct Binary {
