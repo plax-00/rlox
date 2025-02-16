@@ -26,8 +26,7 @@ impl Scanner {
         'lines: for line_text in source.lines() {
             let mut line = line_text.chars().peekable();
             loop {
-                let next = line.next();
-                let Some(c) = next else { break };
+                let Some(c) = line.next() else { break };
                 match c {
                     // Single-character tokens.
                     ' ' | '\t' | '\r' => continue,
@@ -43,65 +42,60 @@ impl Scanner {
                     '*' => tokens.push(Token::new(TokenType::Star, self.line_num)),
                     // One or two character tokens.
                     '!' => match line.peek() {
-                        Some(n) => {
-                            if let &'=' = n {
-                                line.next();
-                                tokens.push(Token::new(TokenType::BangEqual, self.line_num));
-                            } else {
-                                tokens.push(Token::new(TokenType::Bang, self.line_num));
-                            }
+                        Some('=') => {
+                            line.next();
+                            tokens.push(Token::new(TokenType::BangEqual, self.line_num));
+                        }
+                        Some(_) => {
+                            tokens.push(Token::new(TokenType::Bang, self.line_num));
                         }
                         None => errors.push(SyntaxError {
                             line_num: self.line_num,
                         }),
                     },
                     '=' => match line.peek() {
-                        Some(n) => {
-                            if let &'=' = n {
-                                line.next();
-                                tokens.push(Token::new(TokenType::EqualEqual, self.line_num));
-                            } else {
-                                tokens.push(Token::new(TokenType::Equal, self.line_num));
-                            }
+                        Some('=') => {
+                            line.next();
+                            tokens.push(Token::new(TokenType::EqualEqual, self.line_num));
+                        }
+                        Some(_) => {
+                            tokens.push(Token::new(TokenType::Equal, self.line_num));
                         }
                         None => errors.push(SyntaxError {
                             line_num: self.line_num,
                         }),
                     },
                     '>' => match line.peek() {
-                        Some(n) => {
-                            if let &'=' = n {
-                                line.next();
-                                tokens.push(Token::new(TokenType::GreaterEqual, self.line_num));
-                            } else {
-                                tokens.push(Token::new(TokenType::Greater, self.line_num));
-                            }
+                        Some('=') => {
+                            line.next();
+                            tokens.push(Token::new(TokenType::GreaterEqual, self.line_num));
+                        }
+                        Some(_) => {
+                            tokens.push(Token::new(TokenType::Greater, self.line_num));
                         }
                         None => errors.push(SyntaxError {
                             line_num: self.line_num,
                         }),
                     },
                     '<' => match line.peek() {
-                        Some(n) => {
-                            if let &'=' = n {
-                                line.next();
-                                tokens.push(Token::new(TokenType::LessEqual, self.line_num));
-                            } else {
-                                tokens.push(Token::new(TokenType::Less, self.line_num));
-                            }
+                        Some('=') => {
+                            line.next();
+                            tokens.push(Token::new(TokenType::LessEqual, self.line_num));
+                        }
+                        Some(_) => {
+                            tokens.push(Token::new(TokenType::Less, self.line_num));
                         }
                         None => errors.push(SyntaxError {
                             line_num: self.line_num,
                         }),
                     },
                     '/' => match line.peek() {
-                        Some(n) => {
-                            if let &'/' = n {
-                                self.line_num += 1;
-                                continue 'lines;
-                            } else {
-                                tokens.push(Token::new(TokenType::Slash, self.line_num));
-                            }
+                        Some('/') => {
+                            self.line_num += 1;
+                            continue 'lines;
+                        }
+                        Some(_) => {
+                            tokens.push(Token::new(TokenType::Slash, self.line_num));
                         }
                         None => errors.push(SyntaxError {
                             line_num: self.line_num,
