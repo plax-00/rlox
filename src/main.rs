@@ -5,9 +5,12 @@ use std::env;
 mod ast_print;
 mod error;
 mod expression;
+mod interpreter;
+mod operator;
 mod parser;
 mod scanner;
 mod token;
+mod value;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
