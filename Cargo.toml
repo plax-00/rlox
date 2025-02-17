@@ -6,4 +6,5 @@ rust-version = "1.80.0"
 
 [dependencies]
 anyhow = "1.0.95"
+colored = "3.0.0"
 rustc-hash = "2.1.1"

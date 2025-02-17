@@ -1,10 +1,11 @@
 use std::iter::Peekable;
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 
 use crate::{
     expression::{Binary, Expression, Grouping, Literal, Unary},
     operator::{BinaryOperator, UnaryOperator},
+    statement::Stmt,
     token::{Token, TokenType, Tokens},
 };
 
@@ -20,11 +21,44 @@ impl Parser {
         Self { tokens, current }
     }
 
-    pub fn parse(&mut self) -> Result<Expression> {
-        self.parse_expr(0)
+    pub fn parse(&mut self) -> Result<Vec<Stmt>> {
+        let mut stmts = Vec::new();
+        while self
+            .tokens
+            .peek()
+            .is_some_and(|t| t.token_type != TokenType::EOF)
+        {
+            stmts.push(self.parse_stmt()?);
+        }
+        Ok(stmts)
     }
 
-    fn parse_expr(&mut self, right_bp: u8) -> Result<Expression> {
+    fn parse_stmt(&mut self) -> Result<Stmt> {
+        let stmt = if self
+            .tokens
+            .next_if(|t| t.token_type == TokenType::Print)
+            .is_some()
+        {
+            Stmt::PrintStmt(self.parse_expr()?)
+        } else {
+            Stmt::ExprStmt(self.parse_expr()?)
+        };
+        let Some(Token {
+            token_type: TokenType::Semicolon,
+            ..
+        }) = self.tokens.next()
+        else {
+            bail!("Expected `;`")
+        };
+
+        Ok(stmt)
+    }
+
+    fn parse_expr(&mut self) -> Result<Expression> {
+        self.parse_expr_bp(0)
+    }
+
+    fn parse_expr_bp(&mut self, right_bp: u8) -> Result<Expression> {
         let mut expr = self.parse_head()?;
         while let Some(op) = self
             .tokens
@@ -46,7 +80,7 @@ impl Parser {
         {
             let operator = t.try_into().unwrap();
             let operator_bp = prefix_binding_power(&operator);
-            let expr = self.parse_expr(operator_bp).map(Box::new)?;
+            let expr = self.parse_expr_bp(operator_bp).map(Box::new)?;
             let unary = Unary { operator, expr }.into();
             Ok(unary)
         } else {
@@ -57,7 +91,7 @@ impl Parser {
     #[inline]
     fn parse_tail(&mut self, left: Expression, op: BinaryOperator) -> Result<Expression> {
         let operator_bp = infix_binding_power(&op);
-        let right = self.parse_expr(operator_bp)?;
+        let right = self.parse_expr_bp(operator_bp)?;
         let expr = Binary {
             operator: op,
             left: Box::new(left),
@@ -77,7 +111,7 @@ impl Parser {
             TokenType::Number(n) => Literal::Number(n).into(),
             TokenType::String(s) => Literal::String(s).into(),
             TokenType::LeftParen => {
-                let expr = self.parse()?;
+                let expr = self.parse_expr()?;
                 let Some(Token {
                     token_type: TokenType::RightParen,
                     ..
@@ -137,7 +171,7 @@ mod tests {
 
     fn parse_source(source: &'static str) -> Expression {
         let tokens = Scanner::new(source.to_string()).scan_source().unwrap();
-        Parser::new(tokens).parse().unwrap()
+        Parser::new(tokens).parse_expr().unwrap()
     }
 
     #[test]

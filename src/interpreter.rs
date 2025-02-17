@@ -3,14 +3,22 @@ use anyhow::{bail, Result};
 use crate::{
     expression::{Binary, ExprVisitor, Expression, Grouping, Literal, Unary},
     operator::{BinaryOperator, UnaryOperator},
+    statement::{Stmt, StmtVisitor},
     value::Value,
 };
 
-struct Interpreter;
+pub struct Interpreter;
 
 impl Interpreter {
     fn evaluate(&self, expr: &Expression) -> Result<Value> {
         expr.accept(self)
+    }
+
+    pub fn interpret(&self, stmts: Vec<Stmt>) -> Result<()> {
+        for stmt in stmts {
+            stmt.accept(self)?;
+        }
+        Ok(())
     }
 }
 
@@ -68,9 +76,22 @@ impl ExprVisitor for Interpreter {
     }
 }
 
+impl StmtVisitor for Interpreter {
+    type Return = Result<()>;
+    fn visit_expr_stmt(&self, expr: &Expression) -> Self::Return {
+        self.evaluate(expr)?;
+        Ok(())
+    }
+
+    fn visit_print_stmt(&self, expr: &Expression) -> Self::Return {
+        println!("{}", self.evaluate(expr)?);
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::{parser::Parser, scanner::Scanner};
+    use crate::{parser::Parser, scanner::Scanner, statement::Stmt};
 
     use super::*;
 
@@ -78,7 +99,10 @@ mod tests {
 
     fn evaluate_source(source: &'static str) -> Value {
         let tokens = Scanner::new(source.into()).scan_source().unwrap();
-        let expr = Parser::new(tokens).parse().unwrap();
+        let stmts = Parser::new(tokens).parse().unwrap();
+        let Stmt::ExprStmt(ref expr) = stmts[0] else {
+            panic!()
+        };
         INT.evaluate(&expr).unwrap()
     }
 
@@ -98,10 +122,7 @@ mod tests {
             evaluate_source("2 + 2 == 4 and true and 3 <= 4"),
             Value::Bool(true)
         );
-        assert_eq!(
-            evaluate_source(r#" "three" == 3 "#),
-            Value::Bool(false)
-        )
+        assert_eq!(evaluate_source(r#" "three" == 3 "#), Value::Bool(false))
     }
 
     #[test]
