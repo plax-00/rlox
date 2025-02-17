@@ -1,7 +1,4 @@
-use crate::{
-    error::OperatorParseError,
-    token::{Token, TokenType},
-};
+use crate::operator::{BinaryOperator, UnaryOperator};
 
 pub trait ExprVisitor {
     type Return;
@@ -11,6 +8,30 @@ pub trait ExprVisitor {
     fn visit_grouping(&self, grouping: &Grouping) -> Self::Return;
 }
 
+impl<T: ExprVisitor> ExprVisitor for &T {
+    type Return = T::Return;
+    #[inline]
+    fn visit_literal(&self, literal: &Literal) -> Self::Return {
+        (*self).visit_literal(literal)
+    }
+
+    #[inline]
+    fn visit_unary(&self, unary: &Unary) -> Self::Return {
+        (*self).visit_unary(unary)
+    }
+
+    #[inline]
+    fn visit_binary(&self, binary: &Binary) -> Self::Return {
+        (*self).visit_binary(binary)
+    }
+
+    #[inline]
+    fn visit_grouping(&self, grouping: &Grouping) -> Self::Return {
+        (*self).visit_grouping(grouping)
+    }
+}
+
+#[derive(Debug)]
 pub enum Expression {
     Literal(Literal),
     Unary(Unary),
@@ -54,6 +75,7 @@ impl From<Grouping> for Expression {
     }
 }
 
+#[derive(Debug)]
 pub enum Literal {
     Number(f64),
     String(String),
@@ -62,54 +84,20 @@ pub enum Literal {
     Nil,
 }
 
+#[derive(Debug)]
 pub struct Unary {
-    pub operator: Operator,
+    pub operator: UnaryOperator,
     pub expr: Box<Expression>,
 }
 
-#[derive(PartialEq, Eq, Hash)]
-pub enum Operator {
-    Minus,
-    Plus,
-    Div,
-    Mult,
-    Not,
-    NotEqual,
-    Equal,
-    EqualEqual,
-    Greater,
-    GreaterEqual,
-    Less,
-    LessEqual,
-}
-
-impl<'a> TryFrom<&'a Token> for Operator {
-    type Error = OperatorParseError<'a>;
-    fn try_from(value: &'a Token) -> Result<Self, Self::Error> {
-        match value.token_type {
-            TokenType::Minus => Ok(Self::Minus),
-            TokenType::Plus => Ok(Self::Plus),
-            TokenType::Slash => Ok(Self::Div),
-            TokenType::Star => Ok(Self::Mult),
-            TokenType::Bang => Ok(Self::Not),
-            TokenType::BangEqual => Ok(Self::NotEqual),
-            TokenType::Equal => Ok(Self::Equal),
-            TokenType::EqualEqual => Ok(Self::EqualEqual),
-            TokenType::Greater => Ok(Self::Greater),
-            TokenType::GreaterEqual => Ok(Self::GreaterEqual),
-            TokenType::Less => Ok(Self::Less),
-            TokenType::LessEqual => Ok(Self::LessEqual),
-            _ => Err(OperatorParseError { token: value }),
-        }
-    }
-}
-
+#[derive(Debug)]
 pub struct Binary {
-    pub operator: Operator,
+    pub operator: BinaryOperator,
     pub left: Box<Expression>,
     pub right: Box<Expression>,
 }
 
+#[derive(Debug)]
 pub struct Grouping {
     pub expr: Box<Expression>,
 }

@@ -1,8 +1,4 @@
-use std::sync::LazyLock;
-
-use rustc_hash::FxHashMap;
-
-use crate::expression::{Binary, ExprVisitor, Expression, Grouping, Literal, Operator, Unary};
+use crate::expression::{Binary, ExprVisitor, Expression, Grouping, Literal, Unary};
 
 pub struct AstPrinter;
 impl AstPrinter {
@@ -11,7 +7,7 @@ impl AstPrinter {
     }
 }
 
-impl ExprVisitor for &AstPrinter {
+impl ExprVisitor for AstPrinter {
     type Return = String;
     fn visit_literal(&self, literal: &Literal) -> Self::Return {
         let repr = match literal {
@@ -25,12 +21,12 @@ impl ExprVisitor for &AstPrinter {
     }
 
     fn visit_unary(&self, unary: &Unary) -> Self::Return {
-        format!("({:?} {})", unary.operator, self.print(unary.expr.as_ref()))
+        format!("({} {})", unary.operator, self.print(unary.expr.as_ref()))
     }
 
     fn visit_binary(&self, binary: &Binary) -> Self::Return {
         format!(
-            "({:?} {} {})",
+            "({} {} {})",
             binary.operator,
             self.print(binary.left.as_ref()),
             self.print(binary.right.as_ref())
@@ -42,33 +38,10 @@ impl ExprVisitor for &AstPrinter {
     }
 }
 
-impl std::fmt::Debug for Operator {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let repr = *OPERATORS.get(self).expect("Operator should be in hash map");
-        write!(f, "{}", repr)
-    }
-}
-
-static OPERATORS: LazyLock<FxHashMap<Operator, &str>> = LazyLock::new(|| {
-    FxHashMap::from_iter([
-        (Operator::Minus, "-"),
-        (Operator::Plus, "+"),
-        (Operator::Div, "/"),
-        (Operator::Mult, "*"),
-        (Operator::Not, "!"),
-        (Operator::NotEqual, "!="),
-        (Operator::Equal, "="),
-        (Operator::EqualEqual, "=="),
-        (Operator::Greater, ">"),
-        (Operator::GreaterEqual, ">="),
-        (Operator::Less, "<"),
-        (Operator::LessEqual, "<="),
-    ])
-});
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::operator::*;
 
     #[test]
     fn literal_test() {
@@ -90,7 +63,7 @@ mod tests {
     fn binary_test() {
         let printer = AstPrinter;
         let binary = Binary {
-            operator: Operator::Plus,
+            operator: BinaryOperator::Plus,
             left: Box::new(Literal::Number(2.0).into()),
             right: Box::new(Literal::Number(3.0).into()),
         };
@@ -101,10 +74,10 @@ mod tests {
     fn expr_test() {
         let printer = AstPrinter;
         let expr = Binary {
-            operator: Operator::Mult,
+            operator: BinaryOperator::Mult,
             left: Box::new(
                 Unary {
-                    operator: Operator::Minus,
+                    operator: UnaryOperator::Minus,
                     expr: Box::new(Literal::Number(123.0).into()),
                 }
                 .into(),
@@ -119,12 +92,12 @@ mod tests {
         assert_eq!("(* (- 123) (group 45.67))", printer.print(&expr.into()));
 
         let expr = Binary {
-            operator: Operator::Mult,
+            operator: BinaryOperator::Mult,
             left: Box::new(
                 Grouping {
                     expr: Box::new(
                         Binary {
-                            operator: Operator::Plus,
+                            operator: BinaryOperator::Plus,
                             left: Box::new(Literal::Number(2.0).into()),
                             right: Box::new(Literal::Number(2.0).into()),
                         }
@@ -137,11 +110,11 @@ mod tests {
                 Grouping {
                     expr: Box::new(
                         Binary {
-                            operator: Operator::Plus,
+                            operator: BinaryOperator::Plus,
                             left: Box::new(Literal::Number(3.0).into()),
                             right: Box::new(
                                 Unary {
-                                    operator: Operator::Minus,
+                                    operator: UnaryOperator::Minus,
                                     expr: Box::new(Literal::Number(1.0).into()),
                                 }
                                 .into(),
