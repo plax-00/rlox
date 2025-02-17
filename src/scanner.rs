@@ -121,6 +121,7 @@ impl Scanner {
         }
 
         if errors.is_empty() {
+            tokens.push(Token::new(TokenType::EOF, self.line_num - 1));
             Ok(tokens)
         } else {
             Err(errors)

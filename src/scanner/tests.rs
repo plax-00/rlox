@@ -15,6 +15,7 @@ fn scan_string_test() {
             Token::new(TokenType::Semicolon, 2),
             Token::new(TokenType::String("hello again!".to_string()), 3),
             Token::new(TokenType::Semicolon, 3),
+            Token::new(TokenType::EOF, 4),
         ]
     );
 }
@@ -34,6 +35,7 @@ fn scan_number_test() {
             Token::new(TokenType::Semicolon, 2),
             Token::new(TokenType::Number(123.456), 3),
             Token::new(TokenType::Semicolon, 3),
+            Token::new(TokenType::EOF, 4),
         ]
     );
 }
@@ -53,6 +55,7 @@ fn scan_comment_test() {
             Token::new(TokenType::Slash, 3),
             Token::new(TokenType::Number(10.0), 3),
             Token::new(TokenType::Semicolon, 3),
+            Token::new(TokenType::EOF, 4),
         ]
     );
 }
@@ -76,6 +79,7 @@ fn scan_identifier_test() {
             Token::new(TokenType::Print, 3),
             Token::new(TokenType::Identifier("test_var".to_string()), 3),
             Token::new(TokenType::Semicolon, 3),
+            Token::new(TokenType::EOF, 4),
         ]
     );
 }
@@ -179,6 +183,7 @@ fn scanner_test() {
             Token::new(TokenType::Semicolon, 30),
             Token::new(TokenType::RightBrace, 31),
             Token::new(TokenType::RightBrace, 32),
+            Token::new(TokenType::EOF, 32),
         ],
     );
 }
