@@ -1,7 +1,7 @@
 use anyhow::{bail, Result};
 
 use crate::{
-    expression::{Binary, ExprVisitor, Expression, Grouping, Literal, Unary},
+    expression::{Binary, Expression, ExpressionVisitor, Grouping, Literal, Unary},
     operator::{BinaryOperator, UnaryOperator},
     statement::{Stmt, StmtVisitor},
     value::Value,
@@ -22,10 +22,10 @@ impl Interpreter {
     }
 }
 
-impl ExprVisitor for Interpreter {
+impl ExpressionVisitor for Interpreter {
     type Return = Result<Value>;
-    fn visit_literal(&self, literal: &Literal) -> Self::Return {
-        let val = match *literal {
+    fn visit_literal(&self, inner: &Literal) -> Self::Return {
+        let val = match *inner {
             Literal::String(ref s) => Value::String(s.clone()),
             Literal::Number(n) => Value::Number(n),
             Literal::True => Value::Bool(true),
@@ -35,26 +35,26 @@ impl ExprVisitor for Interpreter {
         Ok(val)
     }
 
-    fn visit_unary(&self, unary: &Unary) -> Self::Return {
-        match unary.operator {
+    fn visit_unary(&self, inner: &Unary) -> Self::Return {
+        match inner.operator {
             UnaryOperator::Minus => {
-                let Value::Number(n) = self.evaluate(&unary.expr)? else {
-                    bail!("Expected a number, found {:?}", unary.expr)
+                let Value::Number(n) = self.evaluate(&inner.expr)? else {
+                    bail!("Expected a number, found {:?}", inner.expr)
                 };
                 Ok(Value::Number(-n))
             }
             UnaryOperator::Not => {
-                let b = self.evaluate(&unary.expr)?;
-                Ok(Value::Bool(b.is_truthy()))
+                let b = self.evaluate(&inner.expr)?;
+                Ok(Value::Bool(!b.is_truthy()))
             }
         }
     }
 
-    fn visit_binary(&self, binary: &Binary) -> Self::Return {
-        let left = self.evaluate(&binary.left)?;
-        let right = self.evaluate(&binary.right)?;
+    fn visit_binary(&self, inner: &Binary) -> Self::Return {
+        let left = self.evaluate(&inner.left)?;
+        let right = self.evaluate(&inner.right)?;
 
-        match binary.operator {
+        match inner.operator {
             BinaryOperator::Minus => Ok((left - right)?),
             BinaryOperator::Plus => Ok((left + right)?),
             BinaryOperator::Mult => Ok((left * right)?),
@@ -71,20 +71,21 @@ impl ExprVisitor for Interpreter {
         }
     }
 
-    fn visit_grouping(&self, grouping: &Grouping) -> Self::Return {
-        self.evaluate(&grouping.expr)
+    fn visit_grouping(&self, inner: &Grouping) -> Self::Return {
+        self.evaluate(&inner.expr)
+    }
     }
 }
 
 impl StmtVisitor for Interpreter {
     type Return = Result<()>;
-    fn visit_expr_stmt(&self, expr: &Expression) -> Self::Return {
-        self.evaluate(expr)?;
+    fn visit_expr_stmt(&self, inner: &Expression) -> Self::Return {
+        self.evaluate(inner)?;
         Ok(())
     }
 
-    fn visit_print_stmt(&self, expr: &Expression) -> Self::Return {
-        println!("{}", self.evaluate(expr)?);
+    fn visit_print_stmt(&self, inner: &Expression) -> Self::Return {
+        println!("{}", self.evaluate(inner)?);
         Ok(())
     }
 }

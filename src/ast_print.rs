@@ -1,4 +1,4 @@
-use crate::expression::{Binary, ExprVisitor, Expression, Grouping, Literal, Unary};
+use crate::expression::{Binary, Expression, ExpressionVisitor, Grouping, Literal, Unary};
 
 pub struct AstPrinter;
 impl AstPrinter {
@@ -7,7 +7,7 @@ impl AstPrinter {
     }
 }
 
-impl ExprVisitor for AstPrinter {
+impl ExpressionVisitor for AstPrinter {
     type Return = String;
     fn visit_literal(&self, literal: &Literal) -> Self::Return {
         let repr = match literal {
