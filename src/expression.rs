@@ -8,32 +8,24 @@ pub enum Expression {
     Unary(Unary),
     Binary(Binary),
     Grouping(Grouping),
+    Var(Var),
 }
 
-impl From<Literal> for Expression {
-    #[inline]
-    fn from(value: Literal) -> Self {
-        Self::Literal(value)
-    }
+macro_rules! impl_from {
+    ($from:ident, $for:ty) => {
+        impl From<$from> for $for {
+            fn from(value: $from) -> Self {
+                Self::$from(value)
+            }
+        }
+    };
 }
-impl From<Unary> for Expression {
-    #[inline]
-    fn from(value: Unary) -> Self {
-        Self::Unary(value)
-    }
-}
-impl From<Binary> for Expression {
-    #[inline]
-    fn from(value: Binary) -> Self {
-        Self::Binary(value)
-    }
-}
-impl From<Grouping> for Expression {
-    #[inline]
-    fn from(value: Grouping) -> Self {
-        Self::Grouping(value)
-    }
-}
+
+impl_from!(Literal, Expression);
+impl_from!(Unary, Expression);
+impl_from!(Binary, Expression);
+impl_from!(Grouping, Expression);
+impl_from!(Var, Expression);
 
 #[derive(Debug)]
 pub enum Literal {
@@ -61,3 +53,6 @@ pub struct Binary {
 pub struct Grouping {
     pub expr: Box<Expression>,
 }
+
+#[derive(Debug)]
+pub struct Var(pub String);

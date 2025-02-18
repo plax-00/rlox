@@ -1,9 +1,9 @@
 use anyhow::{bail, Result};
 
 use crate::{
-    expression::{Binary, Expression, ExpressionVisitor, Grouping, Literal, Unary},
+    expression::{Binary, Expression, ExpressionVisitor, Grouping, Literal, Unary, Var},
     operator::{BinaryOperator, UnaryOperator},
-    statement::{Stmt, StmtVisitor},
+    statement::{Stmt, StmtVisitor, VarDecl},
     value::Value,
 };
 
@@ -74,6 +74,9 @@ impl ExpressionVisitor for Interpreter {
     fn visit_grouping(&self, inner: &Grouping) -> Self::Return {
         self.evaluate(&inner.expr)
     }
+
+    fn visit_var(&self, inner: &Var) -> Self::Return {
+        todo!()
     }
 }
 
@@ -87,6 +90,10 @@ impl StmtVisitor for Interpreter {
     fn visit_print_stmt(&self, inner: &Expression) -> Self::Return {
         println!("{}", self.evaluate(inner)?);
         Ok(())
+    }
+
+    fn visit_var(&self, inner: &VarDecl) -> Self::Return {
+        todo!()
     }
 }
 

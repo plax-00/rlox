@@ -3,9 +3,9 @@ use std::iter::Peekable;
 use anyhow::{bail, Result};
 
 use crate::{
-    expression::{Binary, Expression, Grouping, Literal, Unary},
+    expression::{Binary, Expression, Grouping, Literal, Unary, Var},
     operator::{BinaryOperator, UnaryOperator},
-    statement::Stmt,
+    statement::{Stmt, VarDecl},
     token::{Token, TokenType, Tokens},
 };
 
@@ -28,28 +28,48 @@ impl Parser {
             .peek()
             .is_some_and(|t| t.token_type != TokenType::EOF)
         {
-            stmts.push(self.parse_stmt()?);
+            stmts.push(self.parse_decl()?);
         }
         Ok(stmts)
     }
 
-    fn parse_stmt(&mut self) -> Result<Stmt> {
-        let stmt = if self
-            .tokens
-            .next_if(|t| t.token_type == TokenType::Print)
+    #[inline]
+    fn expect_token(&mut self, token_type: TokenType) -> bool {
+        self.tokens
+            .next_if(|t| t.token_type == token_type)
             .is_some()
-        {
+    }
+
+    fn parse_decl(&mut self) -> Result<Stmt> {
+        let stmt = if self.expect_token(TokenType::Var) {
+            let Expression::Var(Var(name)) = self.parse_expr()? else {
+                bail!("Expected variable name")
+            };
+
+            let mut initializer = None;
+            if self.expect_token(TokenType::Equal) {
+                let Stmt::ExprStmt(expr) = self.parse_stmt()? else {
+                    bail!("Expected expression")
+                };
+                initializer = Some(Box::new(expr));
+            }
+
+            VarDecl { name, initializer }.into()
+        } else {
+            self.parse_stmt()?
+        };
+        Ok(stmt)
+    }
+
+    fn parse_stmt(&mut self) -> Result<Stmt> {
+        let stmt = if self.expect_token(TokenType::Print) {
             Stmt::PrintStmt(self.parse_expr()?)
         } else {
             Stmt::ExprStmt(self.parse_expr()?)
         };
-        let Some(Token {
-            token_type: TokenType::Semicolon,
-            ..
-        }) = self.tokens.next()
-        else {
+        if !self.expect_token(TokenType::Semicolon) {
             bail!("Expected `;`")
-        };
+        }
 
         Ok(stmt)
     }
@@ -82,6 +102,7 @@ impl Parser {
             let operator_bp = prefix_binding_power(&operator);
             let expr = self.parse_expr_bp(operator_bp).map(Box::new)?;
             let unary = Unary { operator, expr }.into();
+
             Ok(unary)
         } else {
             self.parse_primary()
@@ -110,6 +131,7 @@ impl Parser {
             TokenType::Nil => Literal::Nil.into(),
             TokenType::Number(n) => Literal::Number(n).into(),
             TokenType::String(s) => Literal::String(s).into(),
+            TokenType::Identifier(i) => Var(i).into(),
             TokenType::LeftParen => {
                 let expr = self.parse_expr()?;
                 let Some(Token {
