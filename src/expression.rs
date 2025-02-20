@@ -9,6 +9,7 @@ pub enum Expression {
     Binary(Binary),
     Grouping(Grouping),
     Var(Var),
+    Assign(Assign),
 }
 
 macro_rules! impl_from {
@@ -26,6 +27,7 @@ impl_from!(Unary, Expression);
 impl_from!(Binary, Expression);
 impl_from!(Grouping, Expression);
 impl_from!(Var, Expression);
+impl_from!(Assign, Expression);
 
 #[derive(Debug)]
 pub enum Literal {
@@ -55,4 +57,12 @@ pub struct Grouping {
 }
 
 #[derive(Debug)]
-pub struct Var(pub String);
+pub struct Var {
+    pub name: String,
+}
+
+#[derive(Debug)]
+pub struct Assign {
+    pub name: Box<Expression>,
+    pub value: Box<Expression>,
+}

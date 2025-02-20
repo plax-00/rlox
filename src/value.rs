@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::{bail, Result};
 
-#[derive(Debug, PartialEq, PartialOrd)]
+#[derive(Debug, PartialEq, PartialOrd, Clone)]
 pub enum Value {
     String(String),
     Number(f64),

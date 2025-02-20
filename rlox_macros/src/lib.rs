@@ -30,15 +30,15 @@ pub fn derive_visitor(item: TokenStream) -> TokenStream {
         let method_name = format_ident!("visit_{}", ident_lower);
 
         let method = quote! {
-            fn #method_name(&self, inner: &#inner_type) -> Self::Return
+            fn #method_name(&mut self, inner: &#inner_type) -> Self::Return
         };
-        methods.push(method);
 
         let ref_impl = quote! {
-            fn #method_name(&self, inner: &#inner_type) -> Self::Return {
+            #method {
                 (*self).#method_name(inner)
             }
         };
+        methods.push(method);
         ref_impls.push(ref_impl);
 
         let match_arm = quote! {
@@ -56,6 +56,14 @@ pub fn derive_visitor(item: TokenStream) -> TokenStream {
             #(#methods;)*
         }
 
+        impl<T: #trait_name> #trait_name for &mut T {
+            type Return = T::Return;
+            #(
+                #[inline]
+                #ref_impls
+            )*
+        }
+
         impl<T: #trait_name> #trait_name for &T {
             type Return = T::Return;
             #(
@@ -65,7 +73,7 @@ pub fn derive_visitor(item: TokenStream) -> TokenStream {
         }
 
         impl #ident {
-            pub fn accept<V: #trait_name>(&self, visitor: V) -> V::Return {
+            pub fn accept<V: #trait_name>(&self, mut visitor: V) -> V::Return {
                 match self {
                     #(#match_arms),*
                 }

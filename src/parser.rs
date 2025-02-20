@@ -3,8 +3,8 @@ use std::iter::Peekable;
 use anyhow::{bail, Result};
 
 use crate::{
-    expression::{Binary, Expression, Grouping, Literal, Unary, Var},
-    operator::{BinaryOperator, UnaryOperator},
+    expression::{Assign, Binary, Expression, Grouping, Literal, Unary, Var},
+    operator::BinaryOperator,
     statement::{Stmt, VarDecl},
     token::{Token, TokenType, Tokens},
 };
@@ -42,7 +42,7 @@ impl Parser {
 
     fn parse_decl(&mut self) -> Result<Stmt> {
         let stmt = if self.expect_token(TokenType::Var) {
-            let Expression::Var(Var(name)) = self.parse_expr()? else {
+            let Expression::Var(Var { name }) = self.parse_primary()? else {
                 bail!("Expected variable name")
             };
 
@@ -99,8 +99,7 @@ impl Parser {
             .next_if(|t| matches!(t.token_type, TokenType::Minus | TokenType::Bang))
         {
             let operator = t.try_into().unwrap();
-            let operator_bp = prefix_binding_power(&operator);
-            let expr = self.parse_expr_bp(operator_bp).map(Box::new)?;
+            let expr = self.parse_expr_bp(PREFIX_BINDING_POWER).map(Box::new)?;
             let unary = Unary { operator, expr }.into();
 
             Ok(unary)
@@ -113,12 +112,20 @@ impl Parser {
     fn parse_tail(&mut self, left: Expression, op: BinaryOperator) -> Result<Expression> {
         let operator_bp = infix_binding_power(&op);
         let right = self.parse_expr_bp(operator_bp)?;
-        let expr = Binary {
-            operator: op,
-            left: Box::new(left),
-            right: Box::new(right),
-        }
-        .into();
+        let expr = match op {
+            BinaryOperator::Equal => Assign {
+                name: Box::new(left),
+                value: Box::new(right),
+            }
+            .into(),
+            _ => Binary {
+                operator: op,
+                left: Box::new(left),
+                right: Box::new(right),
+            }
+            .into(),
+        };
+
         Ok(expr)
     }
 
@@ -131,7 +138,7 @@ impl Parser {
             TokenType::Nil => Literal::Nil.into(),
             TokenType::Number(n) => Literal::Number(n).into(),
             TokenType::String(s) => Literal::String(s).into(),
-            TokenType::Identifier(i) => Var(i).into(),
+            TokenType::Identifier(name) => Var { name }.into(),
             TokenType::LeftParen => {
                 let expr = self.parse_expr()?;
                 let Some(Token {
@@ -157,7 +164,8 @@ impl Parser {
 }
 
 enum BindingPower {
-    AndOr = 1,
+    Assignment = 1,
+    AndOr,
     Equality,
     Comparison,
     Additive,
@@ -167,6 +175,8 @@ enum BindingPower {
 
 fn infix_binding_power(op: &BinaryOperator) -> u8 {
     let bp = match *op {
+        BinaryOperator::Equal => BindingPower::Assignment,
+        BinaryOperator::And | BinaryOperator::Or => BindingPower::AndOr,
         BinaryOperator::EqualEqual | BinaryOperator::NotEqual => BindingPower::Equality,
         BinaryOperator::Greater
         | BinaryOperator::Less
@@ -174,15 +184,11 @@ fn infix_binding_power(op: &BinaryOperator) -> u8 {
         | BinaryOperator::LessEqual => BindingPower::Comparison,
         BinaryOperator::Minus | BinaryOperator::Plus => BindingPower::Additive,
         BinaryOperator::Mult | BinaryOperator::Div => BindingPower::Multiplicative,
-        BinaryOperator::And | BinaryOperator::Or => BindingPower::AndOr,
-        _ => todo!(),
     };
     bp as u8
 }
 
-fn prefix_binding_power(_op: &UnaryOperator) -> u8 {
-    BindingPower::Unary as u8
-}
+const PREFIX_BINDING_POWER: u8 = BindingPower::Unary as u8;
 
 #[cfg(test)]
 mod tests {

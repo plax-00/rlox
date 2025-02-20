@@ -6,7 +6,7 @@ use crate::expression::Expression;
 pub enum Stmt {
     ExprStmt(Expression),
     PrintStmt(Expression),
-    Var(VarDecl),
+    VarDecl(VarDecl),
 }
 
 #[derive(Debug)]
@@ -18,6 +18,6 @@ pub struct VarDecl {
 impl From<VarDecl> for Stmt {
     #[inline]
     fn from(value: VarDecl) -> Self {
-        Self::Var(value)
+        Self::VarDecl(value)
     }
 }

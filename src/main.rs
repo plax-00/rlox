@@ -10,6 +10,7 @@ use scanner::Scanner;
 
 #[cfg(test)]
 mod ast_print;
+mod environment;
 mod error;
 mod expression;
 mod interpreter;
@@ -25,7 +26,7 @@ fn main() -> Result<()> {
     print!("\x1B[2J\x1B[1;1H");
     // let mut stdout = io::stdout();
     let stdin = io::stdin();
-    let int = Interpreter;
+    let mut int = Interpreter::default();
 
     // repl
     let mut buf = String::new();

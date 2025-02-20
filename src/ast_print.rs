@@ -1,4 +1,6 @@
-use crate::expression::{Binary, Expression, ExpressionVisitor, Grouping, Literal, Unary};
+use crate::expression::{
+    Assign, Binary, Expression, ExpressionVisitor, Grouping, Literal, Unary, Var,
+};
 
 pub struct AstPrinter;
 impl AstPrinter {
@@ -9,8 +11,8 @@ impl AstPrinter {
 
 impl ExpressionVisitor for AstPrinter {
     type Return = String;
-    fn visit_literal(&self, literal: &Literal) -> Self::Return {
-        let repr = match literal {
+    fn visit_literal(&mut self, inner: &Literal) -> Self::Return {
+        let repr = match inner {
             Literal::Number(n) => &format!("{}", n),
             Literal::String(s) => &format!(r#""{}""#, s),
             Literal::True => "true",
@@ -20,21 +22,33 @@ impl ExpressionVisitor for AstPrinter {
         format!("{}", repr)
     }
 
-    fn visit_unary(&self, unary: &Unary) -> Self::Return {
-        format!("({} {})", unary.operator, self.print(unary.expr.as_ref()))
+    fn visit_unary(&mut self, inner: &Unary) -> Self::Return {
+        format!("({} {})", inner.operator, self.print(inner.expr.as_ref()))
     }
 
-    fn visit_binary(&self, binary: &Binary) -> Self::Return {
+    fn visit_binary(&mut self, inner: &Binary) -> Self::Return {
         format!(
             "({} {} {})",
-            binary.operator,
-            self.print(binary.left.as_ref()),
-            self.print(binary.right.as_ref())
+            inner.operator,
+            self.print(inner.left.as_ref()),
+            self.print(inner.right.as_ref())
         )
     }
 
-    fn visit_grouping(&self, grouping: &Grouping) -> Self::Return {
-        format!("(group {})", self.print(grouping.expr.as_ref()))
+    fn visit_grouping(&mut self, inner: &Grouping) -> Self::Return {
+        format!("(group {})", self.print(inner.expr.as_ref()))
+    }
+
+    fn visit_var(&mut self, inner: &Var) -> Self::Return {
+        format!("(var {})", inner.name)
+    }
+
+    fn visit_assign(&mut self, inner: &Assign) -> Self::Return {
+        format!(
+            "(= {} {})",
+            self.print(inner.name.as_ref()),
+            self.print(inner.value.as_ref())
+        )
     }
 }
 
