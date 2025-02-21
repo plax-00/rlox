@@ -1,4 +1,4 @@
-use std::{fmt::Display, hash::Hash, sync::LazyLock};
+use std::{fmt::Display, hash::Hash, sync::LazyLock, vec::IntoIter};
 
 use rustc_hash::FxHashMap;
 
@@ -28,20 +28,20 @@ impl Display for Token {
 }
 
 pub struct Tokens {
-    tokens: Vec<Token>,
+    iter: IntoIter<Token>,
 }
 
 impl From<Vec<Token>> for Tokens {
-    fn from(mut tokens: Vec<Token>) -> Self {
-        tokens.reverse();
-        Self { tokens }
+    fn from(tokens: Vec<Token>) -> Self {
+        let iter = tokens.into_iter();
+        Self { iter }
     }
 }
 
 impl Iterator for Tokens {
     type Item = Token;
     fn next(&mut self) -> Option<Self::Item> {
-        self.tokens.pop()
+        self.iter.next()
     }
 }
 
