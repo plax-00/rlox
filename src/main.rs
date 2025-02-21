@@ -24,7 +24,7 @@ mod value;
 fn main() -> Result<()> {
     // clear screen
     print!("\x1B[2J\x1B[1;1H");
-    // let mut stdout = io::stdout();
+    let mut stdout = io::stdout();
     let stdin = io::stdin();
     let mut int = Interpreter::default();
 
@@ -33,7 +33,7 @@ fn main() -> Result<()> {
     loop {
         print!("{}", "rlox".bold().green());
         print!("{}", " > ".purple());
-        io::stdout().flush()?;
+        stdout.flush()?;
 
         buf.clear();
         stdin.read_line(&mut buf)?;
@@ -57,8 +57,20 @@ fn main() -> Result<()> {
                 continue;
             }
         };
-        if let Err(e) = int.interpret(stmts) {
+        if let Err(e) = int.interpret(&stmts) {
             eprintln!("{}", e.to_string().red());
         }
     }
 }
+
+macro_rules! impl_from_inner {
+    ($from:ident, $for:ty) => {
+        impl From<$from> for $for {
+            fn from(value: $from) -> Self {
+                Self::$from(value)
+            }
+        }
+    };
+}
+
+pub(crate) use impl_from_inner;

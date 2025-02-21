@@ -1,35 +1,35 @@
 use std::iter::Peekable;
 
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 
 use crate::{
     expression::{Assign, Binary, Expression, Grouping, Literal, Unary, Var},
     operator::BinaryOperator,
-    statement::{Stmt, VarDecl},
+    statement::{BlockStmt, Stmt, VarDecl},
     token::{Token, TokenType, Tokens},
 };
 
 pub struct Parser {
     tokens: Peekable<Tokens>,
-    current: usize,
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
         let tokens = Tokens::from(tokens).peekable();
-        let current = 0;
-        Self { tokens, current }
+        Self { tokens }
     }
 
     pub fn parse(&mut self) -> Result<Vec<Stmt>> {
+        self.parse_until(TokenType::EOF)
+    }
+
+    fn parse_until(&mut self, until: TokenType) -> Result<Vec<Stmt>> {
         let mut stmts = Vec::new();
-        while self
-            .tokens
-            .peek()
-            .is_some_and(|t| t.token_type != TokenType::EOF)
-        {
+        while self.tokens.peek().is_some_and(|t| t.token_type != until) {
             stmts.push(self.parse_decl()?);
         }
+        self.tokens.next();
+
         Ok(stmts)
     }
 
@@ -62,12 +62,23 @@ impl Parser {
     }
 
     fn parse_stmt(&mut self) -> Result<Stmt> {
-        let stmt = if self.expect_token(TokenType::Print) {
-            Stmt::PrintStmt(self.parse_expr()?)
+        let next = self
+            .tokens
+            .next_if(|t| matches!(t.token_type, TokenType::Print | TokenType::LeftBrace));
+        let stmt = if let Some(t) = next {
+            match t.token_type {
+                TokenType::Print => Stmt::PrintStmt(self.parse_expr()?),
+                TokenType::LeftBrace => BlockStmt {
+                    stmts: self.parse_until(TokenType::RightBrace)?,
+                }
+                .into(),
+                _ => todo!(),
+            }
         } else {
             Stmt::ExprStmt(self.parse_expr()?)
         };
-        if !self.expect_token(TokenType::Semicolon) {
+
+        if !matches!(stmt, Stmt::BlockStmt(_)) && !self.expect_token(TokenType::Semicolon) {
             bail!("Expected `;`")
         }
 
@@ -131,7 +142,11 @@ impl Parser {
 
     #[inline]
     fn parse_primary(&mut self) -> Result<Expression> {
-        let t = self.tokens.next().expect("Expected token(s) to parse.");
+        let t = self
+            .tokens
+            .next()
+            .ok_or_else(|| anyhow!("Expected token"))?;
+
         let expr = match t.token_type {
             TokenType::True => Literal::True.into(),
             TokenType::False => Literal::False.into(),
@@ -141,18 +156,16 @@ impl Parser {
             TokenType::Identifier(name) => Var { name }.into(),
             TokenType::LeftParen => {
                 let expr = self.parse_expr()?;
-                let Some(Token {
-                    token_type: TokenType::RightParen,
-                    ..
-                }) = self.tokens.next()
-                else {
-                    panic!()
-                };
+                if !self.expect_token(TokenType::RightParen) {
+                    bail!("Expected `)`");
+                }
+
                 Grouping {
                     expr: Box::new(expr),
                 }
                 .into()
             }
+            TokenType::EOF => bail!("Unexpected EOF"),
             _ => panic!("{}", t),
         };
         Ok(expr)

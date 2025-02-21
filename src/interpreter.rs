@@ -4,7 +4,7 @@ use crate::{
     environment::Environment,
     expression::{Assign, Binary, Expression, ExpressionVisitor, Grouping, Literal, Unary, Var},
     operator::{BinaryOperator, UnaryOperator},
-    statement::{Stmt, StmtVisitor, VarDecl},
+    statement::{BlockStmt, Stmt, StmtVisitor, VarDecl},
     value::Value,
 };
 
@@ -18,7 +18,7 @@ impl Interpreter {
         expr.accept(self)
     }
 
-    pub fn interpret(&mut self, stmts: Vec<Stmt>) -> Result<()> {
+    pub fn interpret(&mut self, stmts: &Vec<Stmt>) -> Result<()> {
         for stmt in stmts {
             stmt.accept(&mut *self)?;
         }
@@ -115,6 +115,13 @@ impl StmtVisitor for Interpreter {
         };
         self.env.define(&inner.name, value);
 
+        Ok(())
+    }
+
+    fn visit_block_stmt(&mut self, inner: &BlockStmt) -> Self::Return {
+        self.env.push_scope();
+        self.interpret(&inner.stmts)?;
+        self.env.pop_scope();
         Ok(())
     }
 }

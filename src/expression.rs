@@ -1,6 +1,9 @@
 use rlox_macros::Visitor;
 
-use crate::operator::{BinaryOperator, UnaryOperator};
+use crate::{
+    impl_from_inner,
+    operator::{BinaryOperator, UnaryOperator},
+};
 
 #[derive(Debug, Visitor)]
 pub enum Expression {
@@ -12,22 +15,12 @@ pub enum Expression {
     Assign(Assign),
 }
 
-macro_rules! impl_from {
-    ($from:ident, $for:ty) => {
-        impl From<$from> for $for {
-            fn from(value: $from) -> Self {
-                Self::$from(value)
-            }
-        }
-    };
-}
-
-impl_from!(Literal, Expression);
-impl_from!(Unary, Expression);
-impl_from!(Binary, Expression);
-impl_from!(Grouping, Expression);
-impl_from!(Var, Expression);
-impl_from!(Assign, Expression);
+impl_from_inner!(Literal, Expression);
+impl_from_inner!(Unary, Expression);
+impl_from_inner!(Binary, Expression);
+impl_from_inner!(Grouping, Expression);
+impl_from_inner!(Var, Expression);
+impl_from_inner!(Assign, Expression);
 
 #[derive(Debug)]
 pub enum Literal {
