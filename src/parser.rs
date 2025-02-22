@@ -178,7 +178,8 @@ impl Parser {
 
 enum BindingPower {
     Assignment = 1,
-    AndOr,
+    Or,
+    And,
     Equality,
     Comparison,
     Additive,
@@ -189,7 +190,8 @@ enum BindingPower {
 fn infix_binding_power(op: &BinaryOperator) -> u8 {
     let bp = match *op {
         BinaryOperator::Equal => BindingPower::Assignment,
-        BinaryOperator::And | BinaryOperator::Or => BindingPower::AndOr,
+        BinaryOperator::Or => BindingPower::Or,
+        BinaryOperator::And => BindingPower::And,
         BinaryOperator::EqualEqual | BinaryOperator::NotEqual => BindingPower::Equality,
         BinaryOperator::Greater
         | BinaryOperator::Less

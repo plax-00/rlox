@@ -56,8 +56,24 @@ impl ExpressionVisitor for Interpreter {
 
     fn visit_binary(&mut self, inner: &Binary) -> Self::Return {
         let left = self.evaluate(&inner.left)?;
-        let right = self.evaluate(&inner.right)?;
 
+        // short circuit logical operators
+        match inner.operator {
+            BinaryOperator::Or => {
+                return left
+                    .is_truthy()
+                    .then_some(left)
+                    .map_or_else(|| self.evaluate(&inner.right), |v| Ok(v));
+            }
+            BinaryOperator::And => {
+                return (!left.is_truthy())
+                    .then_some(left)
+                    .map_or_else(|| self.evaluate(&inner.right), |v| Ok(v));
+            }
+            _ => (),
+        }
+
+        let right = self.evaluate(&inner.right)?;
         match inner.operator {
             BinaryOperator::Minus => Ok((left - right)?),
             BinaryOperator::Plus => Ok((left + right)?),
@@ -69,8 +85,6 @@ impl ExpressionVisitor for Interpreter {
             BinaryOperator::LessEqual => Ok(Value::Bool(left <= right)),
             BinaryOperator::Greater => Ok(Value::Bool(left > right)),
             BinaryOperator::GreaterEqual => Ok(Value::Bool(left >= right)),
-            BinaryOperator::And => Ok(Value::Bool(left.is_truthy() && right.is_truthy())),
-            BinaryOperator::Or => Ok(Value::Bool(left.is_truthy() || right.is_truthy())),
             op => bail!("Unexpected operator: {}", op),
         }
     }
