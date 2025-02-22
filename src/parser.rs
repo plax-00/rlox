@@ -70,43 +70,10 @@ impl Parser {
     }
 
     fn parse_stmt(&mut self) -> Result<Stmt> {
-        let next = self
-            .tokens
-            .next_if(|t| {
-                matches!(
-                    t.token_type,
-                    TokenType::Print | TokenType::LeftBrace | TokenType::If
-                )
-            })
-            .map(|t| t.token_type);
-
-        let stmt = match next {
-            Some(TokenType::Print) => {
-                let stmt = Stmt::PrintStmt(self.parse_expr()?);
-                self.expect_semicolon()?;
-                stmt
-            }
-            Some(TokenType::LeftBrace) => BlockStmt {
-                stmts: self.parse_until(TokenType::RightBrace)?,
-            }
-            .into(),
-            Some(TokenType::If) => {
-                let Expression::Grouping(grouping) = self.parse_expr()? else {
-                    bail!("Expected `(`")
-                };
-                let condition = grouping.expr;
-                let then_branch = self.parse_stmt().map(Box::new)?;
-                let else_branch = match self.expect_token(TokenType::Else) {
-                    true => self.parse_stmt().map(Box::new).map(Some)?,
-                    false => None,
-                };
-                IfStmt {
-                    condition,
-                    then_branch,
-                    else_branch,
-                }
-                .into()
-            }
+        let stmt = match self.tokens.peek().map(|t| &t.token_type) {
+            Some(TokenType::Print) => self.parse_print_stmt()?,
+            Some(TokenType::LeftBrace) => self.parse_block_stmt()?,
+            Some(TokenType::If) => self.parse_if_stmt()?,
             _ => {
                 let stmt = Stmt::ExprStmt(self.parse_expr()?);
                 self.expect_semicolon()?;
@@ -115,6 +82,40 @@ impl Parser {
         };
 
         Ok(stmt)
+    }
+
+    fn parse_print_stmt(&mut self) -> Result<Stmt> {
+        self.tokens.next();
+        let stmt = Stmt::PrintStmt(self.parse_expr()?);
+        self.expect_semicolon()?;
+        Ok(stmt)
+    }
+
+    fn parse_block_stmt(&mut self) -> Result<Stmt> {
+        self.tokens.next();
+        let stmts = self.parse_until(TokenType::RightBrace)?;
+
+        Ok(BlockStmt { stmts }.into())
+    }
+
+    fn parse_if_stmt(&mut self) -> Result<Stmt> {
+        self.tokens.next();
+        let Expression::Grouping(grouping) = self.parse_expr()? else {
+            bail!("Expected `(`")
+        };
+        let condition = grouping.expr;
+        let then_branch = self.parse_stmt().map(Box::new)?;
+        let else_branch = match self.expect_token(TokenType::Else) {
+            true => self.parse_stmt().map(Box::new).map(Some)?,
+            false => None,
+        };
+
+        Ok(IfStmt {
+            condition,
+            then_branch,
+            else_branch,
+        }
+        .into())
     }
 
     fn parse_expr(&mut self) -> Result<Expression> {
