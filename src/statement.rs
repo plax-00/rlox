@@ -8,10 +8,12 @@ pub enum Stmt {
     PrintStmt(Expression),
     VarDecl(VarDecl),
     BlockStmt(BlockStmt),
+    IfStmt(IfStmt),
 }
 
 impl_from_inner!(VarDecl, Stmt);
 impl_from_inner!(BlockStmt, Stmt);
+impl_from_inner!(IfStmt, Stmt);
 
 #[derive(Debug)]
 pub struct VarDecl {
@@ -22,4 +24,11 @@ pub struct VarDecl {
 #[derive(Debug)]
 pub struct BlockStmt {
     pub stmts: Vec<Stmt>,
+}
+
+#[derive(Debug)]
+pub struct IfStmt {
+    pub condition: Box<Expression>,
+    pub then_branch: Box<Stmt>,
+    pub else_branch: Option<Box<Stmt>>,
 }

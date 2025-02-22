@@ -5,7 +5,7 @@ use anyhow::{anyhow, bail, Result};
 use crate::{
     expression::{Assign, Binary, Expression, Grouping, Literal, Unary, Var},
     operator::BinaryOperator,
-    statement::{BlockStmt, Stmt, VarDecl},
+    statement::{BlockStmt, IfStmt, Stmt, VarDecl},
     token::{Token, TokenType, Tokens},
 };
 
@@ -40,6 +40,14 @@ impl Parser {
             .is_some()
     }
 
+    #[inline]
+    fn expect_semicolon(&mut self) -> Result<()> {
+        if !self.expect_token(TokenType::Semicolon) {
+            bail!("Expected `;`");
+        }
+        Ok(())
+    }
+
     fn parse_decl(&mut self) -> Result<Stmt> {
         let stmt = if self.expect_token(TokenType::Var) {
             let Expression::Var(Var { name }) = self.parse_primary()? else {
@@ -64,23 +72,47 @@ impl Parser {
     fn parse_stmt(&mut self) -> Result<Stmt> {
         let next = self
             .tokens
-            .next_if(|t| matches!(t.token_type, TokenType::Print | TokenType::LeftBrace));
-        let stmt = if let Some(t) = next {
-            match t.token_type {
-                TokenType::Print => Stmt::PrintStmt(self.parse_expr()?),
-                TokenType::LeftBrace => BlockStmt {
-                    stmts: self.parse_until(TokenType::RightBrace)?,
-                }
-                .into(),
-                _ => todo!(),
-            }
-        } else {
-            Stmt::ExprStmt(self.parse_expr()?)
-        };
+            .next_if(|t| {
+                matches!(
+                    t.token_type,
+                    TokenType::Print | TokenType::LeftBrace | TokenType::If
+                )
+            })
+            .map(|t| t.token_type);
 
-        if !matches!(stmt, Stmt::BlockStmt(_)) && !self.expect_token(TokenType::Semicolon) {
-            bail!("Expected `;`")
-        }
+        let stmt = match next {
+            Some(TokenType::Print) => {
+                let stmt = Stmt::PrintStmt(self.parse_expr()?);
+                self.expect_semicolon()?;
+                stmt
+            }
+            Some(TokenType::LeftBrace) => BlockStmt {
+                stmts: self.parse_until(TokenType::RightBrace)?,
+            }
+            .into(),
+            Some(TokenType::If) => {
+                let Expression::Grouping(grouping) = self.parse_expr()? else {
+                    bail!("Expected `(`")
+                };
+                let condition = grouping.expr;
+                let then_branch = self.parse_stmt().map(Box::new)?;
+                let else_branch = match self.expect_token(TokenType::Else) {
+                    true => self.parse_stmt().map(Box::new).map(Some)?,
+                    false => None,
+                };
+                IfStmt {
+                    condition,
+                    then_branch,
+                    else_branch,
+                }
+                .into()
+            }
+            _ => {
+                let stmt = Stmt::ExprStmt(self.parse_expr()?);
+                self.expect_semicolon()?;
+                stmt
+            }
+        };
 
         Ok(stmt)
     }

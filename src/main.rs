@@ -57,8 +57,10 @@ fn main() -> Result<()> {
                 continue;
             }
         };
-        if let Err(e) = int.interpret(&stmts) {
-            eprintln!("{}", e.to_string().red());
+        for stmt in &stmts {
+            if let Err(e) = int.interpret(stmt) {
+                eprintln!("{}", e.to_string().red());
+            }
         }
     }
 }
