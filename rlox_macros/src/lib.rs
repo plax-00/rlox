@@ -35,7 +35,7 @@ pub fn derive_visitor(item: TokenStream) -> TokenStream {
 
         let ref_impl = quote! {
             #method {
-                (*self).#method_name(inner)
+                (**self).#method_name(inner)
             }
         };
         methods.push(method);
@@ -57,14 +57,6 @@ pub fn derive_visitor(item: TokenStream) -> TokenStream {
         }
 
         impl<T: #trait_name> #trait_name for &mut T {
-            type Return = T::Return;
-            #(
-                #[inline]
-                #ref_impls
-            )*
-        }
-
-        impl<T: #trait_name> #trait_name for &T {
             type Return = T::Return;
             #(
                 #[inline]

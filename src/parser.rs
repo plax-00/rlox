@@ -243,8 +243,6 @@ mod tests {
     use super::*;
     use crate::{ast_print::AstPrinter, scanner::Scanner};
 
-    const PRINTER: AstPrinter = AstPrinter;
-
     fn parse_source(source: &'static str) -> Expression {
         let tokens = Scanner::new(source.to_string()).scan_source().unwrap();
         Parser::new(tokens).parse_expr().unwrap()
@@ -252,43 +250,44 @@ mod tests {
 
     #[test]
     fn test_parse_expr() {
+        let mut printer = AstPrinter;
         let expr = parse_source("2 + 3 + 4");
-        assert_eq!("(+ (+ 2 3) 4)", PRINTER.print(&expr));
+        assert_eq!("(+ (+ 2 3) 4)", printer.print(&expr));
 
         let expr = parse_source("-123 * (45.67)");
-        assert_eq!("(* (- 123) (group 45.67))", PRINTER.print(&expr));
+        assert_eq!("(* (- 123) (group 45.67))", printer.print(&expr));
 
         let expr = parse_source("(2 + 2) * (3 + -1)");
         assert_eq!(
             "(* (group (+ 2 2)) (group (+ 3 (- 1))))",
-            PRINTER.print(&expr)
+            printer.print(&expr)
         );
 
         let expr = parse_source(r#" "string" * (3 * 4) / (2 + 1 * 3)"#);
         assert_eq!(
             r#"(/ (* "string" (group (* 3 4))) (group (+ 2 (* 1 3))))"#,
-            PRINTER.print(&expr)
+            printer.print(&expr)
         );
 
         let expr = parse_source("1 <= 2 * 3");
-        assert_eq!("(<= 1 (* 2 3))", PRINTER.print(&expr));
+        assert_eq!("(<= 1 (* 2 3))", printer.print(&expr));
 
         let expr = parse_source("!(-2 < 4)");
-        assert_eq!("(! (group (< (- 2) 4)))", PRINTER.print(&expr));
+        assert_eq!("(! (group (< (- 2) 4)))", printer.print(&expr));
 
         let expr = parse_source("!!true != !!false");
-        assert_eq!("(!= (! (! true)) (! (! false)))", PRINTER.print(&expr));
+        assert_eq!("(!= (! (! true)) (! (! false)))", printer.print(&expr));
 
         let expr = parse_source("4 == 2 - -2");
-        assert_eq!("(== 4 (- 2 (- 2)))", PRINTER.print(&expr));
+        assert_eq!("(== 4 (- 2 (- 2)))", printer.print(&expr));
 
         let expr = parse_source("true and !false");
-        assert_eq!("(and true (! false))", PRINTER.print(&expr));
+        assert_eq!("(and true (! false))", printer.print(&expr));
 
         let expr = parse_source("2 + 2 == 4 and true and 3 <= 4");
         assert_eq!(
             "(and (and (== (+ 2 2) 4) true) (<= 3 4))",
-            PRINTER.print(&expr)
+            printer.print(&expr)
         );
     }
 }

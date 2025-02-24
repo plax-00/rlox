@@ -4,7 +4,7 @@ use crate::expression::{
 
 pub struct AstPrinter;
 impl AstPrinter {
-    pub fn print(&self, expr: &Expression) -> String {
+    pub fn print(&mut self, expr: &Expression) -> String {
         expr.accept(self)
     }
 }
@@ -58,8 +58,8 @@ mod tests {
     use crate::operator::*;
 
     #[test]
-    fn literal_test() {
-        let printer = AstPrinter;
+    fn test_literal() {
+        let mut printer = AstPrinter;
         let literal = Literal::String("print test".to_string());
         assert_eq!(
             r#""print test""#.to_string(),
@@ -74,8 +74,8 @@ mod tests {
     }
 
     #[test]
-    fn binary_test() {
-        let printer = AstPrinter;
+    fn test_binary() {
+        let mut printer = AstPrinter;
         let binary = Binary {
             operator: BinaryOperator::Plus,
             left: Box::new(Literal::Number(2.0).into()),
@@ -85,8 +85,8 @@ mod tests {
     }
 
     #[test]
-    fn expr_test() {
-        let printer = AstPrinter;
+    fn test_expr() {
+        let mut printer = AstPrinter;
         let expr = Binary {
             operator: BinaryOperator::Mult,
             left: Box::new(

@@ -170,21 +170,21 @@ mod tests {
 
     #[test]
     fn test_interpret() {
-        assert_eq!(evaluate_source("2 + 3 * 5"), Value::Number(17.0));
+        assert_eq!(evaluate_source("2 + 3 * 5;"), Value::Number(17.0));
         assert_eq!(
-            evaluate_source(r#" "hello" * 3 "#),
+            evaluate_source(r#" "hello" * 3 ;"#),
             Value::String("hellohellohello".into())
         );
-        assert_eq!(evaluate_source("12 + 3 == 3 * 5"), Value::Bool(true));
+        assert_eq!(evaluate_source("12 + 3 == 3 * 5;"), Value::Bool(true));
         assert_eq!(
-            evaluate_source(r#" "hello" * 3 == "hellohellohello" "#),
+            evaluate_source(r#" "hello" * 3 == "hellohellohello" ;"#),
             Value::Bool(true)
         );
         assert_eq!(
-            evaluate_source("2 + 2 == 4 and true and 3 <= 4"),
+            evaluate_source("2 + 2 == 4 and true and 3 <= 4;"),
             Value::Bool(true)
         );
-        assert_eq!(evaluate_source(r#" "three" == 3 "#), Value::Bool(false))
+        assert_eq!(evaluate_source(r#" "three" == 3 ;"#), Value::Bool(false));
     }
 
     #[test]
