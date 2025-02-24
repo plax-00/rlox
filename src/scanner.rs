@@ -135,13 +135,13 @@ impl Scanner {
     ) -> Result<Token, SyntaxError> {
         match current {
             '"' => {
-                if let None = iter.peek() {
+                if iter.peek().is_none() {
                     return Err(SyntaxError {
                         line_num: self.line_num,
                     });
                 }
                 let mut s = String::new();
-                while let Some(c) = iter.next() {
+                for c in iter {
                     if c == '"' {
                         break;
                     }

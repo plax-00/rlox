@@ -131,7 +131,7 @@ impl Parser {
             .filter(|o| infix_binding_power(o) > right_bp)
         {
             self.tokens.next();
-            expr = self.parse_tail(expr, op.into())?;
+            expr = self.parse_tail(expr, op)?;
         }
         Ok(expr)
     }

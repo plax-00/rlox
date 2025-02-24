@@ -109,9 +109,9 @@ impl Hash for TokenType {
 impl TokenType {
     pub fn lexeme(&self) -> String {
         match &self {
-            TokenType::Identifier(inner) | TokenType::String(inner) => format!("{}", inner),
+            TokenType::Identifier(inner) | TokenType::String(inner) => inner.clone(),
             TokenType::Number(inner) => format!("{}", inner),
-            _ => LEXEMES.get(&self).unwrap().to_string(),
+            _ => LEXEMES.get(self).unwrap().to_string(),
         }
     }
 }

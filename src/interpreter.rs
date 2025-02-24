@@ -61,12 +61,12 @@ impl ExpressionVisitor for Interpreter {
                 return left
                     .is_truthy()
                     .then_some(left)
-                    .map_or_else(|| self.evaluate(&inner.right), |v| Ok(v));
+                    .map_or_else(|| self.evaluate(&inner.right), Ok);
             }
             BinaryOperator::And => {
                 return (!left.is_truthy())
                     .then_some(left)
-                    .map_or_else(|| self.evaluate(&inner.right), |v| Ok(v));
+                    .map_or_else(|| self.evaluate(&inner.right), Ok);
             }
             _ => (),
         }

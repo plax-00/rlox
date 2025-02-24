@@ -30,13 +30,13 @@ pub struct OperatorParseError<'a> {
     pub token: &'a Token,
 }
 
-impl<'a> Display for OperatorParseError<'a> {
+impl Display for OperatorParseError<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "error parsing operator from token: {:?}", self.token)
     }
 }
 
-impl<'a> Error for OperatorParseError<'a> {
+impl Error for OperatorParseError<'_> {
     fn description(&self) -> &str {
         "Token is an invalid operator."
     }

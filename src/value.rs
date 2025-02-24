@@ -15,10 +15,7 @@ pub enum Value {
 
 impl Value {
     pub fn is_truthy(&self) -> bool {
-        match self {
-            Value::Bool(false) | Value::Nil => false,
-            _ => true,
-        }
+        !matches!(self, Value::Bool(false) | Value::Nil)
     }
 }
 
