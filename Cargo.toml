@@ -12,3 +12,7 @@ rlox_macros = { path = "rlox_macros" }
 anyhow = "1.0.95"
 colored = "3.0.0"
 rustc-hash = "2.1.1"
+
+[dev-dependencies]
+insta = { version = "1.42.1", features = ["yaml"] }
+serde = { version = "1.0.218", features = ["derive"] }

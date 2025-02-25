@@ -6,12 +6,14 @@ use rustc_hash::FxHashMap;
 use crate::token::{Token, TokenType};
 
 #[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
+#[cfg_attr(test, derive(serde::Serialize))]
 pub enum UnaryOperator {
     Minus,
     Not,
 }
 
 #[derive(PartialEq, Eq, Hash, Copy, Clone, Debug)]
+#[cfg_attr(test, derive(serde::Serialize))]
 pub enum BinaryOperator {
     Minus,
     Plus,

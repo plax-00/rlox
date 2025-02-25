@@ -6,6 +6,7 @@ use crate::{
 };
 
 #[derive(Debug, Visitor)]
+#[cfg_attr(test, derive(serde::Serialize))]
 pub enum Expression {
     Literal(Literal),
     Unary(Unary),
@@ -23,6 +24,7 @@ impl_from_inner!(Var, Expression);
 impl_from_inner!(Assign, Expression);
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(serde::Serialize))]
 pub enum Literal {
     Number(f64),
     String(String),
@@ -32,12 +34,14 @@ pub enum Literal {
 }
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(serde::Serialize))]
 pub struct Unary {
     pub operator: UnaryOperator,
     pub expr: Box<Expression>,
 }
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(serde::Serialize))]
 pub struct Binary {
     pub operator: BinaryOperator,
     pub left: Box<Expression>,
@@ -45,16 +49,19 @@ pub struct Binary {
 }
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(serde::Serialize))]
 pub struct Grouping {
     pub expr: Box<Expression>,
 }
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(serde::Serialize))]
 pub struct Var {
     pub name: String,
 }
 
 #[derive(Debug)]
+#[cfg_attr(test, derive(serde::Serialize))]
 pub struct Assign {
     pub name: Box<Expression>,
     pub value: Box<Expression>,

@@ -1,0 +1,6 @@
+---
+source: src/parser/tests.rs
+expression: stmt
+---
+PrintStmt:
+  Literal: "False"

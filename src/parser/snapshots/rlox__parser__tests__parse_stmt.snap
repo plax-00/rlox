@@ -1,0 +1,25 @@
+---
+source: src/parser/tests.rs
+expression: stmt
+---
+PrintStmt:
+  Binary:
+    operator: And
+    left:
+      Binary:
+        operator: Less
+        left:
+          Literal:
+            Number: 5
+        right:
+          Literal:
+            Number: 10
+    right:
+      Binary:
+        operator: GreaterEqual
+        left:
+          Literal:
+            Number: 4
+        right:
+          Literal:
+            Number: 2
