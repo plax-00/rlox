@@ -1,0 +1,16 @@
+---
+source: src/parser/tests.rs
+description: var x = 12 / 2;
+expression: "parse_stmts(\"var x = 12 / 2;\")"
+---
+- VarDecl:
+    name: x
+    initializer:
+      Binary:
+        operator: Div
+        left:
+          Literal:
+            Number: 12
+        right:
+          Literal:
+            Number: 2

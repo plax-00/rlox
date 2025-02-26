@@ -1,0 +1,32 @@
+---
+source: src/parser/tests.rs
+description: " {\n    var x = 5;\n    print x;\n    x = x * 2;\n    print x;\n}"
+expression: parse_stmts(source)
+---
+- BlockStmt:
+    stmts:
+      - VarDecl:
+          name: x
+          initializer:
+            Literal:
+              Number: 5
+      - PrintStmt:
+          Var:
+            name: x
+      - ExprStmt:
+          Assign:
+            name:
+              Var:
+                name: x
+            value:
+              Binary:
+                operator: Mult
+                left:
+                  Var:
+                    name: x
+                right:
+                  Literal:
+                    Number: 2
+      - PrintStmt:
+          Var:
+            name: x

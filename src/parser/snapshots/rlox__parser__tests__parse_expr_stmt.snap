@@ -1,0 +1,31 @@
+---
+source: src/parser/tests.rs
+description: 2 + 5 < 2 * 5 == true;
+expression: parse_stmts(source)
+---
+- ExprStmt:
+    Binary:
+      operator: EqualEqual
+      left:
+        Binary:
+          operator: Less
+          left:
+            Binary:
+              operator: Plus
+              left:
+                Literal:
+                  Number: 2
+              right:
+                Literal:
+                  Number: 5
+          right:
+            Binary:
+              operator: Mult
+              left:
+                Literal:
+                  Number: 2
+              right:
+                Literal:
+                  Number: 5
+      right:
+        Literal: "True"

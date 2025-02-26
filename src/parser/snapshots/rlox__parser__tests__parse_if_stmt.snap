@@ -1,0 +1,44 @@
+---
+source: src/parser/tests.rs
+description: "\n    if (x < 0) {\n        print \"x is negative.\";\n    } else if (x > 0) {\n        print \"x is positive.\";\n    } else {\n        print \"x is 0.\";\n    }\n"
+expression: parse_stmts(source)
+---
+- IfStmt:
+    condition:
+      Binary:
+        operator: Less
+        left:
+          Var:
+            name: x
+        right:
+          Literal:
+            Number: 0
+    then_branch:
+      BlockStmt:
+        stmts:
+          - PrintStmt:
+              Literal:
+                String: x is negative.
+    else_branch:
+      IfStmt:
+        condition:
+          Binary:
+            operator: Greater
+            left:
+              Var:
+                name: x
+            right:
+              Literal:
+                Number: 0
+        then_branch:
+          BlockStmt:
+            stmts:
+              - PrintStmt:
+                  Literal:
+                    String: x is positive.
+        else_branch:
+          BlockStmt:
+            stmts:
+              - PrintStmt:
+                  Literal:
+                    String: x is 0.
