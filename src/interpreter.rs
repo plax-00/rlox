@@ -4,7 +4,7 @@ use crate::{
     environment::Environment,
     expression::{Assign, Binary, Expression, ExpressionVisitor, Grouping, Literal, Unary, Var},
     operator::{BinaryOperator, UnaryOperator},
-    statement::{BlockStmt, IfStmt, Stmt, StmtVisitor, VarDecl},
+    statement::{BlockStmt, IfStmt, Stmt, StmtVisitor, VarDecl, WhileStmt},
     value::Value,
 };
 
@@ -150,46 +150,15 @@ impl StmtVisitor for Interpreter {
 
         Ok(())
     }
+
+    fn visit_while_stmt(&mut self, inner: &WhileStmt) -> Self::Return {
+        while self.evaluate(inner.condition.as_ref())?.is_truthy() {
+            self.interpret(inner.body.as_ref())?;
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(test)]
-mod tests {
-    use crate::{parser::Parser, scanner::Scanner, statement::Stmt};
-
-    use super::*;
-
-    fn evaluate_source(source: &'static str) -> Value {
-        let mut int: Interpreter = Interpreter::default();
-        let tokens = Scanner::new(source.into()).scan_source().unwrap();
-        let stmts = Parser::new(tokens).parse().unwrap();
-        let Stmt::ExprStmt(ref expr) = stmts[0] else {
-            panic!()
-        };
-        int.evaluate(&expr).unwrap()
-    }
-
-    #[test]
-    fn test_interpret() {
-        assert_eq!(evaluate_source("2 + 3 * 5;"), Value::Number(17.0));
-        assert_eq!(
-            evaluate_source(r#" "hello" * 3 ;"#),
-            Value::String("hellohellohello".into())
-        );
-        assert_eq!(evaluate_source("12 + 3 == 3 * 5;"), Value::Bool(true));
-        assert_eq!(
-            evaluate_source(r#" "hello" * 3 == "hellohellohello" ;"#),
-            Value::Bool(true)
-        );
-        assert_eq!(
-            evaluate_source("2 + 2 == 4 and true and 3 <= 4;"),
-            Value::Bool(true)
-        );
-        assert_eq!(evaluate_source(r#" "three" == 3 ;"#), Value::Bool(false));
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_error() {
-        evaluate_source("true + false");
-    }
-}
+mod tests;

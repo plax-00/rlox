@@ -5,7 +5,7 @@ use anyhow::{anyhow, bail, Result};
 use crate::{
     expression::{Assign, Binary, Expression, Grouping, Literal, Unary, Var},
     operator::BinaryOperator,
-    statement::{BlockStmt, IfStmt, Stmt, VarDecl},
+    statement::{BlockStmt, IfStmt, Stmt, VarDecl, WhileStmt},
     token::{Token, TokenType, Tokens},
 };
 
@@ -74,6 +74,7 @@ impl Parser {
             Some(TokenType::Print) => self.parse_print_stmt()?,
             Some(TokenType::LeftBrace) => self.parse_block_stmt()?,
             Some(TokenType::If) => self.parse_if_stmt()?,
+            Some(TokenType::While) => self.parse_while_stmt()?,
             _ => {
                 let stmt = Stmt::ExprStmt(self.parse_expr()?);
                 self.expect_semicolon()?;
@@ -116,6 +117,17 @@ impl Parser {
             else_branch,
         }
         .into())
+    }
+
+    fn parse_while_stmt(&mut self) -> Result<Stmt> {
+        self.tokens.next();
+        let Expression::Grouping(grouping) = self.parse_expr()? else {
+            bail!("Expected `(`")
+        };
+        let condition = grouping.expr;
+        let body = self.parse_stmt().map(Box::new)?;
+
+        Ok(WhileStmt { condition, body }.into())
     }
 
     fn parse_expr(&mut self) -> Result<Expression> {

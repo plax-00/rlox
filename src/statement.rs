@@ -10,11 +10,13 @@ pub enum Stmt {
     VarDecl(VarDecl),
     BlockStmt(BlockStmt),
     IfStmt(IfStmt),
+    WhileStmt(WhileStmt),
 }
 
 impl_from_inner!(VarDecl, Stmt);
 impl_from_inner!(BlockStmt, Stmt);
 impl_from_inner!(IfStmt, Stmt);
+impl_from_inner!(WhileStmt, Stmt);
 
 #[derive(Debug)]
 #[cfg_attr(test, derive(serde::Serialize))]
@@ -35,4 +37,11 @@ pub struct IfStmt {
     pub condition: Box<Expression>,
     pub then_branch: Box<Stmt>,
     pub else_branch: Option<Box<Stmt>>,
+}
+
+#[derive(Debug)]
+#[cfg_attr(test, derive(serde::Serialize))]
+pub struct WhileStmt {
+    pub condition: Box<Expression>,
+    pub body: Box<Stmt>,
 }
