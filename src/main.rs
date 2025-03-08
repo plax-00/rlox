@@ -52,8 +52,10 @@ fn main() -> Result<()> {
         };
         let stmts = match Parser::new(tokens).parse() {
             Ok(s) => s,
-            Err(e) => {
-                eprintln!("{}", e.to_string().red());
+            Err(errs) => {
+                for e in errs {
+                    eprintln!("{}", e.to_string().red());
+                }
                 continue;
             }
         };

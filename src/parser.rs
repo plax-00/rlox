@@ -1,8 +1,9 @@
 use std::iter::Peekable;
 
-use anyhow::{anyhow, bail, Result};
+use anyhow::{anyhow, bail, Error, Result};
 
 use crate::{
+    error::{ParseError, ParseErrorType},
     expression::{Assign, Binary, Expression, Grouping, Literal, Unary, Var},
     operator::BinaryOperator,
     statement::{BlockStmt, IfStmt, Stmt, VarDecl, WhileStmt},
@@ -11,26 +12,56 @@ use crate::{
 
 pub struct Parser {
     tokens: Peekable<Tokens>,
+    errors: Vec<Error>,
+}
+
+macro_rules! parse_error {
+    (expect $expected:expr, found $found:expr) => {
+        return {
+            let expected: TokenType = $expected;
+            let found: Token = $found;
+            Err(ParseError {
+                error_type: ParseErrorType::UnexpectedToken {
+                    expected,
+                    found: found.token_type,
+                },
+                line_num: found.line_num,
+            }
+            .into())
+        }
+    };
 }
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
         let tokens = Tokens::from(tokens).peekable();
-        Self { tokens }
+        let errors = Vec::new();
+        Self { tokens, errors }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Stmt>> {
-        self.parse_until(TokenType::EOF)
+    pub fn parse(mut self) -> Result<Vec<Stmt>, Vec<Error>> {
+        let parsed = self.parse_until(TokenType::EOF);
+        if self.errors.is_empty() {
+            Ok(parsed)
+        } else {
+            Err(self.errors)
+        }
     }
 
-    fn parse_until(&mut self, until: TokenType) -> Result<Vec<Stmt>> {
+    fn parse_until(&mut self, until: TokenType) -> Vec<Stmt> {
         let mut stmts = Vec::new();
         while self.tokens.peek().is_some_and(|t| t.token_type != until) {
-            stmts.push(self.parse_decl()?);
+            match self.parse_decl() {
+                Ok(stmt) => stmts.push(stmt),
+                Err(err) => {
+                    self.errors.push(err);
+                    self.synchronize();
+                }
+            }
         }
         self.tokens.next();
 
-        Ok(stmts)
+        stmts
     }
 
     #[inline]
@@ -42,8 +73,9 @@ impl Parser {
 
     #[inline]
     fn expect_semicolon(&mut self) -> Result<()> {
-        if !self.expect_token(TokenType::Semicolon) {
-            bail!("Expected `;`");
+        let next = self.tokens.next().unwrap();
+        if next.token_type != TokenType::Semicolon {
+            parse_error!(expect TokenType::Semicolon, found next);
         }
         Ok(())
     }
@@ -94,15 +126,22 @@ impl Parser {
 
     fn parse_block_stmt(&mut self) -> Result<Stmt> {
         self.tokens.next();
-        let stmts = self.parse_until(TokenType::RightBrace)?;
+        let stmts = self.parse_until(TokenType::RightBrace);
 
         Ok(BlockStmt { stmts }.into())
     }
 
     fn parse_if_stmt(&mut self) -> Result<Stmt> {
         self.tokens.next();
+        let next = self.tokens.peek();
+        if next
+            .filter(|t| t.token_type == TokenType::LeftParen)
+            .is_none()
+        {
+            parse_error!(expect TokenType::LeftParen, found next.unwrap().clone());
+        }
         let Expression::Grouping(grouping) = self.parse_expr()? else {
-            bail!("Expected `(`")
+            bail!("Failed to parse")
         };
         let condition = grouping.expr;
         let then_branch = self.parse_stmt().map(Box::new)?;
@@ -121,8 +160,16 @@ impl Parser {
 
     fn parse_while_stmt(&mut self) -> Result<Stmt> {
         self.tokens.next();
+
+        let next = self.tokens.peek();
+        if next
+            .filter(|t| t.token_type == TokenType::LeftParen)
+            .is_none()
+        {
+            parse_error!(expect TokenType::LeftParen, found next.unwrap().clone());
+        }
         let Expression::Grouping(grouping) = self.parse_expr()? else {
-            bail!("Expected `(`")
+            bail!("Failed to parse")
         };
         let condition = grouping.expr;
         let body = self.parse_stmt().map(Box::new)?;
@@ -202,7 +249,7 @@ impl Parser {
             TokenType::LeftParen => {
                 let expr = self.parse_expr()?;
                 if !self.expect_token(TokenType::RightParen) {
-                    bail!("Expected `)`");
+                    parse_error!(expect TokenType::RightParen, found self.tokens.next().unwrap());
                 }
 
                 Grouping {
@@ -210,14 +257,40 @@ impl Parser {
                 }
                 .into()
             }
-            TokenType::EOF => bail!("Unexpected EOF"),
-            _ => panic!("{}", t),
+            _ => bail!("Unexpected token: `{}`", t.lexeme()),
         };
         Ok(expr)
     }
 
     fn synchronize(&mut self) {
-        todo!()
+        loop {
+            match self.tokens.next().map(|t| t.token_type) {
+                Some(TokenType::Semicolon) => {
+                    if self.is_stmt_start() {
+                        break;
+                    }
+                    self.tokens
+                        .next_if(|t| t.token_type == TokenType::RightBrace);
+                }
+                Some(TokenType::EOF) | None => break,
+                _ => (),
+            }
+        }
+    }
+
+    #[inline]
+    fn is_stmt_start(&mut self) -> bool {
+        self.tokens.peek().is_some_and(|t| {
+            matches!(
+                t.token_type,
+                TokenType::Var
+                    | TokenType::For
+                    | TokenType::If
+                    | TokenType::While
+                    | TokenType::Print
+                    | TokenType::Return
+            )
+        })
     }
 }
 

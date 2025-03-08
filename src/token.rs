@@ -2,7 +2,7 @@ use std::{fmt::Display, hash::Hash, sync::LazyLock, vec::IntoIter};
 
 use rustc_hash::FxHashMap;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Token {
     pub token_type: TokenType,
     pub line_num: u32,
@@ -98,11 +98,10 @@ pub enum TokenType {
 
 impl Eq for TokenType {}
 impl Hash for TokenType {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    fn hash<H: std::hash::Hasher>(&self, _state: &mut H) {
         if let Self::Number(_) = self {
             panic!("Cannot hash float.");
         }
-        self.hash(state)
     }
 }
 
@@ -111,7 +110,10 @@ impl TokenType {
         match &self {
             TokenType::Identifier(inner) | TokenType::String(inner) => inner.clone(),
             TokenType::Number(inner) => format!("{}", inner),
-            _ => LEXEMES.get(self).unwrap().to_string(),
+            _ => match LEXEMES.get(self) {
+                Some(s) => s.to_string(),
+                None => panic!("{:?}", self),
+            },
         }
     }
 }
@@ -177,5 +179,6 @@ static LEXEMES: LazyLock<FxHashMap<TokenType, &str>> = LazyLock::new(|| {
         (TokenType::True, "true"),
         (TokenType::Var, "var"),
         (TokenType::While, "while"),
+        (TokenType::EOF, "EOF"),
     ])
 });

@@ -1,6 +1,10 @@
 use std::{error::Error, fmt::Display};
 
-use crate::token::Token;
+use crate::token::TokenType;
+
+impl Error for SyntaxError {}
+impl Error for ParseError {}
+impl Error for RuntimeError {}
 
 #[derive(Debug, PartialEq)]
 pub struct SyntaxError {
@@ -13,31 +17,43 @@ impl Display for SyntaxError {
     }
 }
 
-impl Error for SyntaxError {
-    fn cause(&self) -> Option<&dyn Error> {
-        None
-    }
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        None
-    }
-    fn description(&self) -> &str {
-        "Source code contains a syntax error."
+#[derive(Debug)]
+pub struct ParseError {
+    pub error_type: ParseErrorType,
+    pub line_num: u32,
+}
+
+#[derive(Debug)]
+pub enum ParseErrorType {
+    UnexpectedToken {
+        expected: TokenType,
+        found: TokenType,
+    },
+}
+
+impl Display for ParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.error_type {
+            ParseErrorType::UnexpectedToken { expected, found } => {
+                write!(
+                    f,
+                    "line {}: Expected `{}`, found `{}`",
+                    self.line_num,
+                    expected.lexeme(),
+                    found.lexeme()
+                )
+            }
+        }
     }
 }
 
 #[derive(Debug)]
-pub struct OperatorParseError<'a> {
-    pub token: &'a Token,
+pub struct RuntimeError {
+    pub line_num: u32,
 }
 
-impl Display for OperatorParseError<'_> {
+impl Display for RuntimeError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "error parsing operator from token: {:?}", self.token)
-    }
-}
-
-impl Error for OperatorParseError<'_> {
-    fn description(&self) -> &str {
-        "Token is an invalid operator."
+        write!(f, "Runtime error: {}", self.line_num)
     }
 }
