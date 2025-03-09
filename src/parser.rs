@@ -65,29 +65,21 @@ impl Parser {
     }
 
     #[inline]
-    fn expect_token(&mut self, token_type: TokenType) -> bool {
-        self.tokens
-            .next_if(|t| t.token_type == token_type)
-            .is_some()
-    }
-
-    #[inline]
-    fn expect_semicolon(&mut self) -> Result<()> {
-        let next = self.tokens.next().unwrap();
-        if next.token_type != TokenType::Semicolon {
-            parse_error!(expect TokenType::Semicolon, found next);
+    fn expect_token(&mut self, token_type: TokenType) -> Result<()> {
+        match self.tokens.next_if(|t| t.token_type == token_type) {
+            Some(_) => Ok(()),
+            None => parse_error!(expect token_type, found self.tokens.peek().cloned().unwrap()),
         }
-        Ok(())
     }
 
     fn parse_decl(&mut self) -> Result<Stmt> {
-        let stmt = if self.expect_token(TokenType::Var) {
+        let stmt = if self.expect_token(TokenType::Var).is_ok() {
             let Expression::Var(Var { name }) = self.parse_primary()? else {
                 bail!("Expected variable name")
             };
 
             let mut initializer = None;
-            if self.expect_token(TokenType::Equal) {
+            if self.expect_token(TokenType::Equal).is_ok() {
                 let Stmt::ExprStmt(expr) = self.parse_stmt()? else {
                     bail!("Expected expression")
                 };
@@ -109,7 +101,7 @@ impl Parser {
             Some(TokenType::While) => self.parse_while_stmt()?,
             _ => {
                 let stmt = Stmt::ExprStmt(self.parse_expr()?);
-                self.expect_semicolon()?;
+                self.expect_token(TokenType::Semicolon)?;
                 stmt
             }
         };
@@ -120,7 +112,7 @@ impl Parser {
     fn parse_print_stmt(&mut self) -> Result<Stmt> {
         self.tokens.next();
         let stmt = Stmt::PrintStmt(self.parse_expr()?);
-        self.expect_semicolon()?;
+        self.expect_token(TokenType::Semicolon)?;
         Ok(stmt)
     }
 
@@ -146,8 +138,8 @@ impl Parser {
         let condition = grouping.expr;
         let then_branch = self.parse_stmt().map(Box::new)?;
         let else_branch = match self.expect_token(TokenType::Else) {
-            true => self.parse_stmt().map(Box::new).map(Some)?,
-            false => None,
+            Ok(_) => self.parse_stmt().map(Box::new).map(Some)?,
+            Err(_) => None,
         };
 
         Ok(IfStmt {
@@ -248,9 +240,7 @@ impl Parser {
             TokenType::Identifier(name) => Var { name }.into(),
             TokenType::LeftParen => {
                 let expr = self.parse_expr()?;
-                if !self.expect_token(TokenType::RightParen) {
-                    parse_error!(expect TokenType::RightParen, found self.tokens.next().unwrap());
-                }
+                self.expect_token(TokenType::RightParen)?;
 
                 Grouping {
                     expr: Box::new(expr),
