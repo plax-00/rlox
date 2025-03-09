@@ -48,6 +48,8 @@ impl Add for Value {
         let result = match (self, rhs) {
             (Self::Number(l), Self::Number(r)) => Self::Number(l + r),
             (Self::String(l), Self::String(r)) => Self::String(l + &r),
+            (Self::Number(l), Self::String(r)) => Self::String(format!("{}", l) + &r),
+            (Self::String(l), Self::Number(r)) => Self::String(l + &format!("{}", r)),
             (l, r) => bail!("Cannot add {:?} and {:?}", l, r),
         };
         Ok(result)
