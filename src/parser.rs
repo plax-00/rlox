@@ -80,11 +80,10 @@ impl Parser {
 
             let mut initializer = None;
             if self.expect_token(TokenType::Equal).is_ok() {
-                let Stmt::ExprStmt(expr) = self.parse_stmt()? else {
-                    bail!("Expected expression")
-                };
+                let expr = self.parse_expr()?;
                 initializer = Some(Box::new(expr));
             }
+            self.expect_token(TokenType::Semicolon)?;
 
             VarDecl { name, initializer }.into()
         } else {
@@ -99,6 +98,7 @@ impl Parser {
             Some(TokenType::LeftBrace) => self.parse_block_stmt()?,
             Some(TokenType::If) => self.parse_if_stmt()?,
             Some(TokenType::While) => self.parse_while_stmt()?,
+            Some(TokenType::For) => self.parse_for_stmt()?,
             _ => {
                 let stmt = Stmt::ExprStmt(self.parse_expr()?);
                 self.expect_token(TokenType::Semicolon)?;
@@ -167,6 +167,58 @@ impl Parser {
         let body = self.parse_stmt().map(Box::new)?;
 
         Ok(WhileStmt { condition, body }.into())
+    }
+
+    fn parse_for_stmt(&mut self) -> Result<Stmt> {
+        self.tokens.next();
+        self.expect_token(TokenType::LeftParen)?;
+
+        let mut stmts = Vec::new();
+
+        let initializer = match self.tokens.peek().map(|t| &t.token_type) {
+            Some(TokenType::Semicolon) => {
+                self.tokens.next();
+                None
+            }
+            Some(TokenType::Var) => Some(self.parse_decl()?),
+            Some(_) => Some(self.parse_stmt()?),
+            None => panic!("Token stream ended unexpectedly"),
+        };
+        if let Some(s) = initializer {
+            stmts.push(s);
+        }
+
+        let condition = match self.tokens.peek().map(|t| &t.token_type) {
+            Some(TokenType::Semicolon) => Literal::True.into(),
+            Some(_) => self.parse_expr()?,
+            None => panic!("Token stream ended unexpectedly"),
+        };
+        self.expect_token(TokenType::Semicolon)?;
+
+        let increment = match self.tokens.peek().map(|t| &t.token_type) {
+            Some(TokenType::RightParen) => None,
+            Some(_) => Some(self.parse_expr()?),
+            None => panic!("Token stream ended unexpectedly"),
+        };
+        self.expect_token(TokenType::RightParen)?;
+
+        let mut body = self.parse_stmt()?;
+        if let Some(e) = increment {
+            body = BlockStmt {
+                stmts: vec![body, Stmt::ExprStmt(e)],
+            }
+            .into()
+        }
+
+        stmts.push(
+            WhileStmt {
+                condition: Box::new(condition),
+                body: Box::new(body),
+            }
+            .into(),
+        );
+
+        Ok(BlockStmt { stmts }.into())
     }
 
     fn parse_expr(&mut self) -> Result<Expression> {
